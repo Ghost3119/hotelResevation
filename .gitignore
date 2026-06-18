@@ -1,0 +1,41 @@
+# ===== Backend (Java/Maven) =====
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+hs_err_pid*
+
+# Maven (root-level, if ever used)
+target/
+.m2-cache/
+
+# ===== Frontend (Node/Vite) =====
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+frontend/coverage/
+*.local
+
+# ===== IDE / OS =====
+.idea/
+.vscode/
+*.iml
+*.swp
+.DS_TS
+Thumbs.db
+
+# ===== Env / secrets =====
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== Docker =====
+*.pid
