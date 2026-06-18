@@ -4,6 +4,7 @@ import type {
   ReservationStatus,
   RoomStatus,
 } from '../api/types'
+import { BADGE_BASE } from '../utils/constants'
 import {
   PAYMENT_STATUS_BADGE,
   PAYMENT_STATUS_LABELS,
@@ -15,7 +16,7 @@ import {
 
 export function RoomStatusBadge({ status }: { status: RoomStatus }) {
   return (
-    <span className={clsx('badge', ROOM_STATUS_BADGE[status])}>
+    <span className={clsx(BADGE_BASE, ROOM_STATUS_BADGE[status])}>
       {ROOM_STATUS_LABELS[status]}
     </span>
   )
@@ -23,7 +24,7 @@ export function RoomStatusBadge({ status }: { status: RoomStatus }) {
 
 export function ReservationStatusBadge({ status }: { status: ReservationStatus }) {
   return (
-    <span className={clsx('badge', RESERVATION_STATUS_BADGE[status])}>
+    <span className={clsx(BADGE_BASE, RESERVATION_STATUS_BADGE[status])}>
       {RESERVATION_STATUS_LABELS[status]}
     </span>
   )
@@ -31,7 +32,7 @@ export function ReservationStatusBadge({ status }: { status: ReservationStatus }
 
 export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   return (
-    <span className={clsx('badge', PAYMENT_STATUS_BADGE[status])}>
+    <span className={clsx(BADGE_BASE, PAYMENT_STATUS_BADGE[status])}>
       {PAYMENT_STATUS_LABELS[status]}
     </span>
   )

@@ -1,4 +1,5 @@
 import type { NormalizedError } from '../api/types'
+import { BTN_SECONDARY } from '../utils/constants'
 
 interface ErrorStateProps {
   error?: unknown
@@ -17,11 +18,11 @@ export function ErrorState({ error, message, onRetry }: ErrorStateProps) {
   const normalized = asNormalized(error)
   const text = message || normalized?.message || 'Se ha producido un error.'
   return (
-    <div className="state state-error" role="alert">
+    <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center text-red-600" role="alert">
       <strong>Error</strong>
       <span>{text}</span>
       {onRetry && (
-        <button type="button" className="btn btn-secondary" onClick={onRetry}>
+        <button type="button" className={BTN_SECONDARY} onClick={onRetry}>
           Reintentar
         </button>
       )}

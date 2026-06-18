@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import clsx from 'clsx'
 
 type ToastKind = 'success' | 'error' | 'info'
 
@@ -22,6 +23,12 @@ interface ToastContextValue {
 }
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined)
+
+const TOAST_KIND_BORDER: Record<ToastKind, string> = {
+  success: 'border-l-4 border-l-green-500',
+  error: 'border-l-4 border-l-red-500',
+  info: 'border-l-4 border-l-cyan-500',
+}
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
@@ -51,11 +58,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="toast-container" aria-live="polite">
+      <div className="fixed bottom-5 right-5 z-[80] flex min-w-[240px] max-w-[360px] flex-col gap-2" aria-live="polite">
         {toasts.map((t) => (
-          <div key={t.id} className={`toast toast-${t.kind}`} role="status">
+          <div
+            key={t.id}
+            className={clsx(
+              'flex items-center gap-2.5 rounded-md border border-slate-200 bg-white px-3.5 py-2.5 shadow-md',
+              TOAST_KIND_BORDER[t.kind],
+            )}
+            role="status"
+          >
             <span>{t.message}</span>
-            <button type="button" className="toast-close" onClick={() => remove(t.id)} aria-label="Cerrar">
+            <button
+              type="button"
+              className="text-lg leading-none text-slate-400 hover:text-slate-700"
+              onClick={() => remove(t.id)}
+              aria-label="Cerrar"
+            >
               ×
             </button>
           </div>

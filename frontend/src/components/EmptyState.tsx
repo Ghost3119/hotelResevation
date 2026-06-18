@@ -12,7 +12,7 @@ export function EmptyState({
   action,
 }: EmptyStateProps) {
   return (
-    <div className="state state-empty">
+    <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center text-slate-500">
       <strong>{title}</strong>
       <span>{message}</span>
       {action}

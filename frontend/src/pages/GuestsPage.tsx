@@ -16,7 +16,16 @@ import {
 } from '../hooks/useGuests'
 import { type GuestWriteDto } from '../api/guests.api'
 import type { GuestDto, NormalizedError } from '../api/types'
-import { PAGE_SIZE_DEFAULT, ROUTES } from '../utils/constants'
+import {
+  PAGE_SIZE_DEFAULT,
+  ROUTES,
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  BTN_SM,
+  FORM_ALERT_ERROR,
+  FORM_ROW,
+  FORM_ACTIONS,
+} from '../utils/constants'
 import { formatDate, fullName } from '../utils/format'
 import { getFieldErrors } from '../utils/error'
 
@@ -107,13 +116,13 @@ export function GuestsPage() {
       key: 'actions',
       header: 'Acciones',
       render: (g) => (
-        <div className="flex-gap">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => openEdit(g)}>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={`${BTN_SECONDARY} ${BTN_SM}`} onClick={() => openEdit(g)}>
             Editar
           </button>
           <button
             type="button"
-            className="btn btn-secondary btn-sm"
+            className={`${BTN_SECONDARY} ${BTN_SM}`}
             onClick={() => navigate(ROUTES.guestReservations(g.id))}
           >
             Reservas
@@ -129,13 +138,13 @@ export function GuestsPage() {
         title="Huéspedes"
         subtitle="Búsqueda y registro de huéspedes"
         actions={
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
+          <button type="button" className={BTN_PRIMARY} onClick={openCreate}>
             Nuevo huésped
           </button>
         }
       />
 
-      <div className="toolbar">
+      <div className="mb-4 flex flex-wrap items-end gap-2.5">
         <Input
           name="search"
           label="Buscar por nombre, correo o documento"
@@ -145,8 +154,7 @@ export function GuestsPage() {
             setPage(0)
           }}
           placeholder="Escriba para buscar…"
-          wrapperClassName="toolbar-search"
-          style={{ minWidth: 280 }}
+          wrapperClassName="min-w-[280px]"
         />
       </div>
 
@@ -158,7 +166,7 @@ export function GuestsPage() {
             title="Sin huéspedes"
             message="No se encontraron huéspedes con los criterios indicados."
             action={
-              <button type="button" className="btn btn-primary" onClick={openCreate}>
+              <button type="button" className={BTN_PRIMARY} onClick={openCreate}>
                 Nuevo huésped
               </button>
             }
@@ -188,9 +196,9 @@ export function GuestsPage() {
       >
         <form onSubmit={onSubmit} noValidate>
           {submitError && (
-            <div className="form-alert form-alert-error" role="alert">{submitError}</div>
+            <div className={FORM_ALERT_ERROR} role="alert">{submitError}</div>
           )}
-          <div className="form-row">
+          <div className={FORM_ROW}>
             <Input
               label="Nombre"
               name="firstName"
@@ -208,7 +216,7 @@ export function GuestsPage() {
               required
             />
           </div>
-          <div className="form-row">
+          <div className={FORM_ROW}>
             <Input
               label="Correo electrónico"
               name="email"
@@ -225,7 +233,7 @@ export function GuestsPage() {
               error={fieldErrors.phone}
             />
           </div>
-          <div className="form-row">
+          <div className={FORM_ROW}>
             <Input
               label="Documento de identidad"
               name="documentNumber"
@@ -243,8 +251,8 @@ export function GuestsPage() {
               required
             />
           </div>
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(false)}>
+          <div className={FORM_ACTIONS}>
+            <button type="button" className={BTN_SECONDARY} onClick={() => setModalOpen(false)}>
               Cancelar
             </button>
             <ModalSubmitButton
@@ -257,4 +265,3 @@ export function GuestsPage() {
     </div>
   )
 }
-

@@ -40,6 +40,12 @@ export interface AuthResponse {
   user: UserDto
 }
 
+export interface RefreshResponse {
+  token: string
+  type: string
+  expiresIn: number
+}
+
 export interface PageDto<T> {
   content: T[]
   page: number

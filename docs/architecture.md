@@ -229,10 +229,12 @@ Todos los listados paginados usan `page` (0-based) y `size` (default 20, max 100
 y devuelven `{ content: [...], page, size, totalElements, totalPages }`.
 
 ### Autenticación
-| Método | Path                    | Auth | Roles | Descripción                |
-|--------|-------------------------|------|-------|----------------------------|
-| POST   | `/api/auth/login`       | No   | -     | Login, devuelve JWT        |
-| GET    | `/api/auth/me`          | Sí   | *     | Perfil del usuario         |
+| Método | Path                    | Auth               | Roles | Descripción                                    |
+|--------|-------------------------|--------------------|-------|------------------------------------------------|
+| POST   | `/api/auth/login`       | No                 | -     | Login, devuelve access token + cookie refresh  |
+| POST   | `/api/auth/refresh`    | Cookie refresh     | -     | Rota refresh token, devuelve nuevo access token|
+| POST   | `/api/auth/logout`     | Access token       | *     | Revoca refresh token, limpia cookie            |
+| GET    | `/api/auth/me`          | Access token       | *     | Perfil del usuario                             |
 
 ### Usuarios
 | Método | Path                    | Roles | Descripción            |
@@ -311,8 +313,18 @@ y devuelven `{ content: [...], page, size, totalElements, totalPages }`.
 // POST /api/auth/login  request
 { "email": "string", "password": "string" }
 // response 200
-{ "token": "string", "type": "Bearer", "expiresIn": 3600,
-  "user": { "id": 1, "email": "string", "fullName": "string", "role": "ADMIN" } }
+{ "token": "string", "type": "Bearer", "expiresIn": 900,
+  "user": { "id": 1, "email": "string", "fullName": "string", "role": "ADMIN", "active": true } }
+// + Set-Cookie: hotel_refresh=<refresh-token>; HttpOnly; Path=/api/auth; SameSite=Lax; Max-Age=604800
+
+// POST /api/auth/refresh  (reads hotel_refresh cookie)
+// response 200
+{ "token": "string", "type": "Bearer", "expiresIn": 900 }
+// + Set-Cookie: hotel_refresh=<new-refresh-token>; HttpOnly; Path=/api/auth; ...
+
+// POST /api/auth/logout  (requires Authorization: Bearer)
+// response 204
+// + Set-Cookie: hotel_refresh=; Max-Age=0
 
 // GET /api/auth/me response
 { "id": 1, "email": "string", "fullName": "string", "role": "ADMIN", "active": true }
@@ -452,12 +464,14 @@ Códigos de error de negocio: `RESERVATION_OVERLAP`, `INVALID_DATES`,
 
 - Fechas de calendario: `LocalDate` (Java) / `string YYYY-MM-DD` (JSON).
 - Fechas y horas de auditoría: `Instant`/`LocalDateTime` almacenado en UTC; JSON en ISO-8601 con offset Z.
-- Importes: `BigDecimal` (Java), escala 2; JSON como número con 2 decimales.
+- Importes: `BigDecimal` (Java), escala 2; JSON como número con 2 decimales. Moneda: MXN.
 - IDs: `Long` autogenerados (bigserial en BD).
 - Contraseñas: BCrypt (coste 10).
-- JWT: HS256, claim `sub`=userId, `email`, `role`, `exp`; expiración 1h (configurable).
-- Cabecera auth: `Authorization: Bearer <token>`.
-- CORS: permitir `http://localhost:5173` en dev.
+- Access token: HS256, claim `sub`=userId, `email`, `role`, `type=access`, `exp`; expiración 15 min (configurable).
+- Refresh token: JWT con `type=refresh`, `jti`=UUID; hash SHA-256 almacenado en BD; rotación en cada uso; cookie HttpOnly `hotel_refresh` (Path `/api/auth`, SameSite=Lax, Secure configurable); expiración 7 días.
+- Cabecera auth: `Authorization: Bearer <access-token>`.
+- CORS: permitir `http://localhost:5173` en dev, con `allowCredentials(true)`.
+- Frontend CSS: Tailwind CSS v3 (PostCSS). No CSS custom; solo utilidades Tailwind.
 - Variables de entorno en `.env` (no commitear `.env`); ejemplo en `.env.example`.
 - Migraciones Flyway: `V1__init.sql`, `V2__seed.sql`, etc. en
   `backend/src/main/resources/db/migration`.

@@ -27,19 +27,38 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
   return (
     <>
-      {open && <div className="sidebar-backdrop" onClick={onClose} aria-hidden="true" />}
-      <aside className={clsx('sidebar', open && 'sidebar-open')}>
-        <div className="sidebar-brand">
-          <span className="sidebar-logo">HM</span>
-          <span className="sidebar-title">Hotel Manager</span>
+      {open && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-900/50 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={clsx(
+          'sticky top-0 flex h-screen w-60 flex-shrink-0 flex-col bg-slate-900 text-slate-200',
+          'max-lg:fixed max-lg:left-0 max-lg:z-40 max-lg:transition-transform',
+          open ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full',
+        )}
+      >
+        <div className="flex items-center gap-2.5 border-b border-white/10 px-4 py-4">
+          <span className="flex h-7 w-7 items-center justify-center rounded bg-blue-600 text-sm font-bold text-white">
+            HM
+          </span>
+          <span className="font-semibold text-white">Hotel Manager</span>
         </div>
-        <nav className="sidebar-nav">
+        <nav className="flex flex-col gap-0.5 overflow-y-auto px-2.5 py-3">
           {items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               onClick={onClose}
-              className={({ isActive }) => clsx('sidebar-link', isActive && 'active')}
+              className={({ isActive }) =>
+                clsx(
+                  'rounded px-3 py-2 font-medium text-slate-300 hover:bg-white/10 hover:text-white',
+                  isActive && 'bg-blue-600 text-white',
+                )
+              }
             >
               {item.label}
             </NavLink>

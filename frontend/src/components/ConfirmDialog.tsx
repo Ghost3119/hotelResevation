@@ -1,4 +1,6 @@
+import clsx from 'clsx'
 import { Spinner } from './Spinner'
+import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY } from '../utils/constants'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -25,21 +27,28 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   if (!open) return null
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
-      <div className="modal modal-sm">
-        <div className="modal-header">
-          <h2 id="confirm-title">{title}</h2>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 px-4 py-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-title"
+    >
+      <div className="flex w-full max-w-md flex-col rounded-lg bg-white shadow-xl">
+        <div className="flex items-center border-b border-slate-200 px-4 py-3.5">
+          <h2 id="confirm-title" className="text-lg font-semibold text-slate-900">
+            {title}
+          </h2>
         </div>
-        <div className="modal-body">
+        <div className="p-4">
           <p>{message}</p>
         </div>
-        <div className="modal-footer">
-          <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={loading}>
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3">
+          <button type="button" className={BTN_SECONDARY} onClick={onCancel} disabled={loading}>
             {cancelLabel}
           </button>
           <button
             type="button"
-            className={destructive ? 'btn btn-danger' : 'btn btn-primary'}
+            className={clsx(destructive ? BTN_DANGER : BTN_PRIMARY)}
             onClick={onConfirm}
             disabled={loading}
           >

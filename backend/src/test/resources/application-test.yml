@@ -25,8 +25,13 @@ server:
 app:
   jwt:
     secret: test-secret-test-secret-test-secret-test-secret-32bytes
-    expiration-seconds: 3600
+    access-token-expiration-seconds: 900
     issuer: hotel-manager-test
+  refresh-token:
+    expiration-seconds: 604800
+    secure: false
+    cookie-name: hotel_refresh
+    cookie-path: /api/auth
   cors:
     allowed-origins: http://localhost:5173
 

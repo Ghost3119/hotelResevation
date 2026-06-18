@@ -242,11 +242,15 @@ export const handlers = [
     return HttpResponse.json({
       token: 'test-jwt-token',
       type: 'Bearer',
-      expiresIn: 3600,
+      expiresIn: 900,
       user: meUser,
     })
   }),
   http.get(`${API}/auth/me`, () => HttpResponse.json(meUser)),
+  http.post(`${API}/auth/refresh`, () =>
+    HttpResponse.json({ token: 'new-test-token', type: 'Bearer', expiresIn: 900 }),
+  ),
+  http.post(`${API}/auth/logout`, () => new HttpResponse(null, { status: 204 })),
 
   // Dashboard
   http.get(`${API}/dashboard`, () => HttpResponse.json(dashboard)),
@@ -300,7 +304,19 @@ export const handlers = [
   }),
 
   // Room types
-  http.get(`${API}/room-types`, () => HttpResponse.json(roomTypes)),
+  http.get(`${API}/room-types`, ({ request }) => {
+    const url = new URL(request.url)
+    const active = url.searchParams.get('active')
+    let list = roomTypes
+    if (active === 'true') list = roomTypes.filter((rt) => rt.active)
+    return HttpResponse.json({
+      content: list,
+      page: 0,
+      size: 100,
+      totalElements: list.length,
+      totalPages: 1,
+    })
+  }),
 
   // Rooms
   http.get(`${API}/rooms`, ({ request }) => {

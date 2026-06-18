@@ -19,7 +19,22 @@ import {
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
   ROUTES,
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  BTN_SM,
+  CARD,
+  CARD_BODY,
+  DATA_TABLE,
+  FORM_ALERT_ERROR,
+  FORM_ACTIONS,
+  TABLE_TH,
+  TABLE_TD,
+  TABLE_EMPTY_TD,
 } from '../utils/constants'
+
+const DETAIL_GRID = 'grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]'
+const DETAIL_LABEL = 'text-xs uppercase tracking-wide text-slate-500'
+const DETAIL_VALUE = 'font-semibold text-slate-900'
 
 export function ReservationDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -161,14 +176,14 @@ export function ReservationDetailPage() {
         title={`Reserva #${reservation.id}`}
         subtitle={`${reservation.guestName} · ${reservation.roomTypeName}`}
         actions={
-          <div className="flex-gap">
-            <Link to={ROUTES.RESERVATIONS} className="btn btn-secondary">
+          <div className="flex flex-wrap gap-2">
+            <Link to={ROUTES.RESERVATIONS} className={BTN_SECONDARY}>
               Volver
             </Link>
             {(reservation.status === 'PENDING' || reservation.status === 'CONFIRMED') && (
               <button
                 type="button"
-                className="btn btn-secondary"
+                className={BTN_SECONDARY}
                 onClick={() => {
                   setAssignRoomId('')
                   setAssignOpen(true)
@@ -177,13 +192,13 @@ export function ReservationDetailPage() {
                 Asignar habitación
               </button>
             )}
-            <button type="button" className="btn btn-primary" onClick={() => setPayOpen(true)}>
+            <button type="button" className={BTN_PRIMARY} onClick={() => setPayOpen(true)}>
               Registrar pago
             </button>
             {canCheckIn && (
               <button
                 type="button"
-                className="btn btn-primary"
+                className={BTN_PRIMARY}
                 onClick={handleCheckIn}
                 disabled={checkInMut.isPending}
               >
@@ -193,7 +208,7 @@ export function ReservationDetailPage() {
             {canCheckOut && (
               <button
                 type="button"
-                className="btn btn-primary"
+                className={BTN_PRIMARY}
                 onClick={() => setCheckOutOpen(true)}
               >
                 Check-out
@@ -202,7 +217,7 @@ export function ReservationDetailPage() {
             {canCancel && (
               <button
                 type="button"
-                className="btn btn-danger"
+                className="inline-flex items-center gap-2 rounded-md border border-red-600 bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                 onClick={() => setCancelOpen(true)}
               >
                 Cancelar reserva
@@ -212,168 +227,172 @@ export function ReservationDetailPage() {
         }
       />
 
-      <div className="card card-body">
-        <div className="flex-gap" style={{ marginBottom: 12 }}>
+      <div className={`${CARD} ${CARD_BODY}`}>
+        <div className="mb-3 flex flex-wrap gap-2">
           <ReservationStatusBadge status={reservation.status} />
         </div>
-        <div className="detail-grid">
-          <div className="detail-item">
-            <span className="detail-label">Huésped</span>
-            <span className="detail-value">{reservation.guestName}</span>
+        <div className={DETAIL_GRID}>
+          <div className="flex flex-col gap-0.5">
+            <span className={DETAIL_LABEL}>Huésped</span>
+            <span className={DETAIL_VALUE}>{reservation.guestName}</span>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Entrada</span>
-            <span className="detail-value">{formatDate(reservation.checkIn)}</span>
+          <div className="flex flex-col gap-0.5">
+            <span className={DETAIL_LABEL}>Entrada</span>
+            <span className={DETAIL_VALUE}>{formatDate(reservation.checkIn)}</span>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Salida</span>
-            <span className="detail-value">{formatDate(reservation.checkOut)}</span>
+          <div className="flex flex-col gap-0.5">
+            <span className={DETAIL_LABEL}>Salida</span>
+            <span className={DETAIL_VALUE}>{formatDate(reservation.checkOut)}</span>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Noches</span>
-            <span className="detail-value">{reservation.nights}</span>
+          <div className="flex flex-col gap-0.5">
+            <span className={DETAIL_LABEL}>Noches</span>
+            <span className={DETAIL_VALUE}>{reservation.nights}</span>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Adultos / Niños</span>
-            <span className="detail-value">{reservation.adults} / {reservation.children}</span>
+          <div className="flex flex-col gap-0.5">
+            <span className={DETAIL_LABEL}>Adultos / Niños</span>
+            <span className={DETAIL_VALUE}>{reservation.adults} / {reservation.children}</span>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Precio/noche</span>
-            <span className="detail-value"><Amount value={reservation.nightlyPrice} /></span>
+          <div className="flex flex-col gap-0.5">
+            <span className={DETAIL_LABEL}>Precio/noche</span>
+            <span className={DETAIL_VALUE}><Amount value={reservation.nightlyPrice} /></span>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Total</span>
-            <span className="detail-value"><Amount value={reservation.totalAmount} /></span>
+          <div className="flex flex-col gap-0.5">
+            <span className={DETAIL_LABEL}>Total</span>
+            <span className={DETAIL_VALUE}><Amount value={reservation.totalAmount} /></span>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Pagado</span>
-            <span className="detail-value"><Amount value={reservation.paidAmount} /></span>
+          <div className="flex flex-col gap-0.5">
+            <span className={DETAIL_LABEL}>Pagado</span>
+            <span className={DETAIL_VALUE}><Amount value={reservation.paidAmount} /></span>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Saldo</span>
-            <span className="detail-value"><Amount value={reservation.balance} /></span>
+          <div className="flex flex-col gap-0.5">
+            <span className={DETAIL_LABEL}>Saldo</span>
+            <span className={DETAIL_VALUE}><Amount value={reservation.balance} /></span>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Check-in en</span>
-            <span className="detail-value">{formatDateTime(reservation.checkInAt)}</span>
+          <div className="flex flex-col gap-0.5">
+            <span className={DETAIL_LABEL}>Check-in en</span>
+            <span className={DETAIL_VALUE}>{formatDateTime(reservation.checkInAt)}</span>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Check-out en</span>
-            <span className="detail-value">{formatDateTime(reservation.checkOutAt)}</span>
+          <div className="flex flex-col gap-0.5">
+            <span className={DETAIL_LABEL}>Check-out en</span>
+            <span className={DETAIL_VALUE}>{formatDateTime(reservation.checkOutAt)}</span>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Creada</span>
-            <span className="detail-value">{formatDateTime(reservation.createdAt)}</span>
+          <div className="flex flex-col gap-0.5">
+            <span className={DETAIL_LABEL}>Creada</span>
+            <span className={DETAIL_VALUE}>{formatDateTime(reservation.createdAt)}</span>
           </div>
         </div>
 
         {reservation.notes && (
-          <p className="muted" style={{ marginTop: 12 }}>
+          <p className="mt-3 text-sm text-slate-500">
             <strong>Notas:</strong> {reservation.notes}
           </p>
         )}
         {reservation.specialRequests && (
-          <p className="muted" style={{ marginTop: 4 }}>
+          <p className="mt-1 text-sm text-slate-500">
             <strong>Peticiones especiales:</strong> {reservation.specialRequests}
           </p>
         )}
       </div>
 
-      <h3 className="section-title">Habitaciones asignadas</h3>
-      <div className="data-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Habitación</th>
-              <th>Entrada</th>
-              <th>Salida</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reservation.rooms.length === 0 ? (
-              <tr className="data-table-empty-row">
-                <td colSpan={3}>Sin habitaciones asignadas.</td>
-              </tr>
-            ) : (
-              reservation.rooms.map((rr) => (
-                <tr key={rr.roomId}>
-                  <td>{rr.roomNumber}</td>
-                  <td>{formatDate(rr.checkIn)}</td>
-                  <td>{formatDate(rr.checkOut)}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <h3 className="section-title">Pagos</h3>
-      {paymentsQ.isLoading && <LoadingState />}
-      {paymentsQ.isError && <ErrorState error={paymentsQ.error} onRetry={() => paymentsQ.refetch()} />}
-      {paymentsQ.data && (
-        <div className="data-table">
-          <table>
+      <h3 className="my-2.5 text-base font-semibold text-slate-900">Habitaciones asignadas</h3>
+      <div className={DATA_TABLE}>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th>ID</th>
-                <th className="text-right">Importe</th>
-                <th>Método</th>
-                <th>Estado</th>
-                <th>Referencia</th>
-                <th>Fecha</th>
-                <th>Acciones</th>
+                <th className={TABLE_TH}>Habitación</th>
+                <th className={TABLE_TH}>Entrada</th>
+                <th className={TABLE_TH}>Salida</th>
               </tr>
             </thead>
             <tbody>
-              {paymentsQ.data.length === 0 ? (
-                <tr className="data-table-empty-row">
-                  <td colSpan={7}>Sin pagos registrados.</td>
+              {reservation.rooms.length === 0 ? (
+                <tr>
+                  <td className={TABLE_EMPTY_TD} colSpan={3}>Sin habitaciones asignadas.</td>
                 </tr>
               ) : (
-                paymentsQ.data.map((p) => (
-                  <tr key={p.id}>
-                    <td>#{p.id}</td>
-                    <td className="text-right"><Amount value={p.amount} /></td>
-                    <td>{PAYMENT_METHOD_LABELS[p.method]}</td>
-                    <td><PaymentStatusBadge status={p.status} /></td>
-                    <td>{p.reference ?? '—'}</td>
-                    <td>{formatDateTime(p.paidAt)}</td>
-                    <td>
-                      <div className="flex-gap">
-                        {p.status === 'COMPLETED' && (
-                          <>
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => handlePaymentStatus(p.id, 'REFUNDED')}
-                            >
-                              Reembolsar
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => handlePaymentStatus(p.id, 'CANCELLED')}
-                            >
-                              Anular
-                            </button>
-                          </>
-                        )}
-                        {p.status === 'PENDING' && (
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => handlePaymentStatus(p.id, 'COMPLETED')}
-                          >
-                            Completar
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                reservation.rooms.map((rr) => (
+                  <tr key={rr.roomId}>
+                    <td className={TABLE_TD}>{rr.roomNumber}</td>
+                    <td className={TABLE_TD}>{formatDate(rr.checkIn)}</td>
+                    <td className={TABLE_TD}>{formatDate(rr.checkOut)}</td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <h3 className="my-2.5 text-base font-semibold text-slate-900">Pagos</h3>
+      {paymentsQ.isLoading && <LoadingState />}
+      {paymentsQ.isError && <ErrorState error={paymentsQ.error} onRetry={() => paymentsQ.refetch()} />}
+      {paymentsQ.data && (
+        <div className={DATA_TABLE}>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className={TABLE_TH}>ID</th>
+                  <th className={`${TABLE_TH} text-right`}>Importe</th>
+                  <th className={TABLE_TH}>Método</th>
+                  <th className={TABLE_TH}>Estado</th>
+                  <th className={TABLE_TH}>Referencia</th>
+                  <th className={TABLE_TH}>Fecha</th>
+                  <th className={TABLE_TH}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentsQ.data.length === 0 ? (
+                  <tr>
+                    <td className={TABLE_EMPTY_TD} colSpan={7}>Sin pagos registrados.</td>
+                  </tr>
+                ) : (
+                  paymentsQ.data.map((p) => (
+                    <tr key={p.id}>
+                      <td className={TABLE_TD}>#{p.id}</td>
+                      <td className={`${TABLE_TD} text-right`}><Amount value={p.amount} /></td>
+                      <td className={TABLE_TD}>{PAYMENT_METHOD_LABELS[p.method]}</td>
+                      <td className={TABLE_TD}><PaymentStatusBadge status={p.status} /></td>
+                      <td className={TABLE_TD}>{p.reference ?? '—'}</td>
+                      <td className={TABLE_TD}>{formatDateTime(p.paidAt)}</td>
+                      <td className={TABLE_TD}>
+                        <div className="flex flex-wrap gap-2">
+                          {p.status === 'COMPLETED' && (
+                            <>
+                              <button
+                                type="button"
+                                className={`${BTN_SECONDARY} ${BTN_SM}`}
+                                onClick={() => handlePaymentStatus(p.id, 'REFUNDED')}
+                              >
+                                Reembolsar
+                              </button>
+                              <button
+                                type="button"
+                                className={`${BTN_SECONDARY} ${BTN_SM}`}
+                                onClick={() => handlePaymentStatus(p.id, 'CANCELLED')}
+                              >
+                                Anular
+                              </button>
+                            </>
+                          )}
+                          {p.status === 'PENDING' && (
+                            <button
+                              type="button"
+                              className={`${BTN_SECONDARY} ${BTN_SM}`}
+                              onClick={() => handlePaymentStatus(p.id, 'COMPLETED')}
+                            >
+                              Completar
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -403,8 +422,8 @@ export function ReservationDetailPage() {
               ))}
             </Select>
           )}
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setAssignOpen(false)}>
+          <div className={FORM_ACTIONS}>
+            <button type="button" className={BTN_SECONDARY} onClick={() => setAssignOpen(false)}>
               Cancelar
             </button>
             <ModalSubmitButton loading={assignMut.isPending} label="Asignar" />
@@ -421,20 +440,20 @@ export function ReservationDetailPage() {
       >
         <form onSubmit={handlePay} noValidate>
           {paySubmitError && (
-            <div className="form-alert form-alert-error" role="alert">{paySubmitError}</div>
+            <div className={FORM_ALERT_ERROR} role="alert">{paySubmitError}</div>
           )}
-          <div className="detail-grid" style={{ marginBottom: 12 }}>
-            <div className="detail-item">
-              <span className="detail-label">Total</span>
-              <span className="detail-value">{formatCurrency(reservation.totalAmount)}</span>
+          <div className={`${DETAIL_GRID} mb-3`}>
+            <div className="flex flex-col gap-0.5">
+              <span className={DETAIL_LABEL}>Total</span>
+              <span className={DETAIL_VALUE}>{formatCurrency(reservation.totalAmount)}</span>
             </div>
-            <div className="detail-item">
-              <span className="detail-label">Saldo pendiente</span>
-              <span className="detail-value">{formatCurrency(reservation.balance)}</span>
+            <div className="flex flex-col gap-0.5">
+              <span className={DETAIL_LABEL}>Saldo pendiente</span>
+              <span className={DETAIL_VALUE}>{formatCurrency(reservation.balance)}</span>
             </div>
           </div>
           <Input
-            label="Importe (EUR)"
+            label="Importe (MXN)"
             name="amount"
             type="number"
             step="0.01"
@@ -464,8 +483,8 @@ export function ReservationDetailPage() {
             onChange={(e) => setPayReference(e.target.value)}
             error={payErrors.reference}
           />
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setPayOpen(false)}>
+          <div className={FORM_ACTIONS}>
+            <button type="button" className={BTN_SECONDARY} onClick={() => setPayOpen(false)}>
               Cancelar
             </button>
             <ModalSubmitButton loading={createPaymentMut.isPending} label="Registrar pago" />

@@ -1,5 +1,13 @@
 import clsx from 'clsx'
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import {
+  FORM_ERROR,
+  FORM_FIELD,
+  FORM_HINT,
+  FORM_LABEL,
+  INPUT,
+  INPUT_ERROR,
+} from '../utils/constants'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string
@@ -19,19 +27,19 @@ export function Input({
 }: InputProps) {
   const inputId = id || rest.name
   return (
-    <div className={clsx('form-field', wrapperClassName)}>
+    <div className={clsx(FORM_FIELD, wrapperClassName)}>
       {label && (
-        <label htmlFor={inputId} className="form-label">
+        <label htmlFor={inputId} className={FORM_LABEL}>
           {label}
         </label>
       )}
       <input
         id={inputId}
-        className={clsx('input', error && 'input-error', className)}
+        className={clsx(INPUT, error && INPUT_ERROR, className)}
         {...rest}
       />
-      {hint && !error && <span className="form-hint">{hint}</span>}
-      {error && <span className="form-error">{error}</span>}
+      {hint && !error && <span className={FORM_HINT}>{hint}</span>}
+      {error && <span className={FORM_ERROR}>{error}</span>}
     </div>
   )
 }
@@ -56,17 +64,17 @@ export function Select({
 }: SelectProps) {
   const selectId = id || rest.name
   return (
-    <div className={clsx('form-field', wrapperClassName)}>
+    <div className={clsx(FORM_FIELD, wrapperClassName)}>
       {label && (
-        <label htmlFor={selectId} className="form-label">
+        <label htmlFor={selectId} className={FORM_LABEL}>
           {label}
         </label>
       )}
-      <select id={selectId} className={clsx('input', error && 'input-error', className)} {...rest}>
+      <select id={selectId} className={clsx(INPUT, error && INPUT_ERROR, className)} {...rest}>
         {children}
       </select>
-      {hint && !error && <span className="form-hint">{hint}</span>}
-      {error && <span className="form-error">{error}</span>}
+      {hint && !error && <span className={FORM_HINT}>{hint}</span>}
+      {error && <span className={FORM_ERROR}>{error}</span>}
     </div>
   )
 }
@@ -89,15 +97,15 @@ export function TextArea({
 }: TextAreaProps) {
   const areaId = id || rest.name
   return (
-    <div className={clsx('form-field', wrapperClassName)}>
+    <div className={clsx(FORM_FIELD, wrapperClassName)}>
       {label && (
-        <label htmlFor={areaId} className="form-label">
+        <label htmlFor={areaId} className={FORM_LABEL}>
           {label}
         </label>
       )}
-      <textarea id={areaId} className={clsx('input', error && 'input-error', className)} {...rest} />
-      {hint && !error && <span className="form-hint">{hint}</span>}
-      {error && <span className="form-error">{error}</span>}
+      <textarea id={areaId} className={clsx(INPUT, error && INPUT_ERROR, className)} {...rest} />
+      {hint && !error && <span className={FORM_HINT}>{hint}</span>}
+      {error && <span className={FORM_ERROR}>{error}</span>}
     </div>
   )
 }

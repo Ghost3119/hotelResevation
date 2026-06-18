@@ -34,12 +34,12 @@ describe('ReservationDetailPage', () => {
     await user.click(screen.getByRole('button', { name: 'Registrar pago' }))
     expect(await screen.findByRole('heading', { name: 'Registrar pago' })).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText('Importe (EUR)'), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText('Importe (MXN)'), { target: { value: '100' } })
     const dialog = screen.getByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Registrar pago' }))
 
     expect(await screen.findByText('Pago registrado.')).toBeInTheDocument()
-    expect((await screen.findAllByText(/140,00/)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/\$140\.00/)).length).toBeGreaterThan(0)
   })
 
   it('realiza check-out de una reserva checked-in', async () => {

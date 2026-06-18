@@ -19,8 +19,8 @@ public class JwtService {
     @Value("${app.jwt.secret}")
     private String secret;
 
-    @Value("${app.jwt.expiration-seconds}")
-    private long expirationSeconds;
+    @Value("${app.jwt.access-token-expiration-seconds:900}")
+    private long accessTokenExpirationSeconds;
 
     @Value("${app.jwt.issuer:hotel-manager}")
     private String issuer;
@@ -38,12 +38,29 @@ public class JwtService {
 
     public String generate(Long userId, String email, UserRole role) {
         Date now = new Date();
+        Date expiry = new Date(now.getTime() + accessTokenExpirationSeconds * 1000L);
+        return Jwts.builder()
+                .issuer(issuer)
+                .subject(String.valueOf(userId))
+                .claim("email", email)
+                .claim("role", role.name())
+                .claim("type", "access")
+                .issuedAt(now)
+                .expiration(expiry)
+                .signWith(key, Jwts.SIG.HS256)
+                .compact();
+    }
+
+    public String generateRefreshToken(Long userId, String email, UserRole role, String jti, long expirationSeconds) {
+        Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationSeconds * 1000L);
         return Jwts.builder()
                 .issuer(issuer)
                 .subject(String.valueOf(userId))
                 .claim("email", email)
                 .claim("role", role.name())
+                .claim("type", "refresh")
+                .id(jti)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(key, Jwts.SIG.HS256)
@@ -67,7 +84,7 @@ public class JwtService {
         }
     }
 
-    public long getExpirationSeconds() {
-        return expirationSeconds;
+    public long getAccessTokenExpirationSeconds() {
+        return accessTokenExpirationSeconds;
     }
 }

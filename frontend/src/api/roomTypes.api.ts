@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { RoomTypeDto } from './types'
+import type { PageDto, RoomTypeDto } from './types'
 
 export interface RoomTypeWriteDto {
   name: string
@@ -20,7 +20,7 @@ export interface RoomTypeListParams {
 
 export const roomTypesApi = {
   list: (params: RoomTypeListParams = {}) =>
-    api.get<RoomTypeDto[]>('/room-types', { params }).then((r) => r.data),
+    api.get<PageDto<RoomTypeDto>>('/room-types', { params }).then((r) => r.data.content),
   get: (id: number) => api.get<RoomTypeDto>(`/room-types/${id}`).then((r) => r.data),
   create: (data: RoomTypeWriteDto) =>
     api.post<RoomTypeDto>('/room-types', data).then((r) => r.data),

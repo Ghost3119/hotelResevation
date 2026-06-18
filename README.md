@@ -84,11 +84,12 @@ hotel/
 |---------------|-------------------------------------------------------------------|
 | Backend       | Java 21, Spring Boot 3.3, Maven                                   |
 | Persistencia  | PostgreSQL 16, Flyway, Spring Data JPA                            |
-| Seguridad     | Spring Security + JWT (HS256, jjwt 0.12), BCrypt                  |
+| Seguridad     | Spring Security + JWT (HS256, jjwt 0.12), BCrypt, refresh tokens |
 | Documentación | OpenAPI 3 (springdoc-openapi)                                     |
 | Frontend      | React 18, TypeScript, Vite, React Router 6, TanStack Query 5      |
-| HTTP          | axios                                                             |
-| Tests FE      | Vitest, Testing Library, MSW                                      |
+| CSS           | Tailwind CSS v3                                                   |
+| HTTP          | axios (withCredentials para cookies refresh)                      |
+| Tests FE      | Vitest, Testing Library, MSW, Playwright (E2E navegador)         |
 | Infra         | Docker Compose                                                    |
 
 ---
@@ -132,7 +133,8 @@ Variables principales (ver `.env.example` para el listado completo):
 
 - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`
 - `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`
-- `JWT_SECRET`, `JWT_EXPIRATION_SECONDS`, `JWT_ISSUER`
+- `JWT_SECRET`, `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS` (900=15min), `JWT_ISSUER`
+- `REFRESH_TOKEN_EXPIRATION_SECONDS` (604800=7 días), `REFRESH_TOKEN_SECURE` (false en dev)
 - `CORS_ALLOWED_ORIGINS` (por defecto `http://localhost:5173`)
 - `VITE_API_BASE_URL` (frontend)
 
@@ -195,7 +197,10 @@ cd backend
 
 Pruebas implementadas (cubre los casos obligatorios):
 
-- `AuthServiceTest` / `AuthControllerTest`: login correcto, credenciales inválidas, `/me`.
+- `AuthServiceTest` / `AuthControllerTest`: login correcto (con cookie refresh),
+  credenciales inválidas, `/me`, refresh con cookie, logout limpia cookie.
+- `RefreshTokenTest`: generación, validación, rotación (token viejo revocado),
+  detección de reutilización (revoca toda la cadena), revocación por usuario.
 - `SecurityTest`: endpoint de ADMIN accedido por RECEPCIONISTA → 403; ADMIN → 200.
 - `ReservationServiceTest`: reserva válida (noches y total correctos), fechas
   inválidas (`checkOut <= checkIn`), solapamiento → `RESERVATION_OVERLAP`,
@@ -212,8 +217,9 @@ Pruebas implementadas (cubre los casos obligatorios):
 ```bash
 cd frontend
 npm run lint         # ESLint, 0 errores
-npm run test         # Vitest + Testing Library + MSW
+npm run test         # Vitest + Testing Library + MSW (46 tests)
 npm run build        # tsc -b && vite build
+npm run test:e2e     # Playwright (requiere backend + postgres levantados)
 ```
 
 Pruebas frontend (flujos principales con MSW mockeando el backend):
@@ -262,7 +268,15 @@ Pruebas frontend (flujos principales con MSW mockeando el backend):
 - **Concurrencia**: asignación de habitación y check-in usan `@Transactional` +
   bloqueo pesimista sobre la habitación.
 - **Importes**: `BigDecimal` (escala 2) en backend y `NUMERIC(12,2)` en BD;
-  nunca `double`. Jackson serializa con 2 decimales.
+  nunca `double`. Jackson serializa como número con 2 decimales. Moneda: MXN.
+- **Refresh tokens**: access token JWT de 15 min + refresh token JWT con
+  rotación en cada uso. Solo se almacena el hash SHA-256 en BD
+  (`refresh_tokens`). Detección de reutilización: si un token revocado se
+  presenta, se revocan todos los tokens del usuario. El refresh token se
+  envía en cookie HttpOnly (`hotel_refresh`, Path `/api/auth`). El frontend
+  usa `withCredentials: true` e intercepta 401 para refrescar automáticamente.
+- **Tailwind CSS**: la interfaz usa Tailwind CSS v3 con PostCSS. No hay CSS
+  custom; todas las clases son utilidades de Tailwind.
 - **Fechas**: `LocalDate` para fechas de calendario (`check_in`/`check_out`),
   `Instant`/`TIMESTAMPTZ` para auditoría en UTC.
 - **DTOs**: las entidades JPA no se exponen; controladores usan DTOs + mappers
@@ -270,11 +284,13 @@ Pruebas frontend (flujos principales con MSW mockeando el backend):
 - **Tests backend**: H2 en modo PostgreSQL con Flyway desactivado y
   `ddl-auto=create-drop`; la validación de solapamiento se prueba a nivel de
   servicio (H2 no tiene GiST).
-- **Tests frontend**: MSW mockea todos los endpoints usados; sin backend real.
+- **Tests frontend**: Vitest + MSW (unitarios, 46 tests) + Playwright (E2E en
+  navegador real, 8 tests contra stack levantado).
 - **`columnDefinition="jsonb"`**: se omite en las anotaciones `@JdbcTypeCode`
   para que Hibernate genere `jsonb` en PostgreSQL (valida contra el esquema)
   pero `json` en H2 (compatibilidad de tests).
-- **CORS**: configurado para `http://localhost:5173` en desarrollo.
+- **CORS**: configurado para `http://localhost:5173` en desarrollo, con
+  `allowCredentials(true)` para cookies de refresh.
 - **OpenAPI**: publicado en `/api/openapi.json` y `/api/docs`, públicos sin auth.
 
 ---
@@ -283,20 +299,23 @@ Pruebas frontend (flujos principales con MSW mockeando el backend):
 
 - Sin pasarela de pago real: los pagos son registros manuales (MVP).
 - No se almacenan ni procesan datos sensibles de tarjetas.
-- Sin refresh token: el JWT expira y requiere re-login (expiración configurable).
 - El check-out se permite con saldo pendiente (se registra en auditoría); no
   bloquea por saldo impagado (decisión de MVP).
 - No hay i18n formal: los literales de la interfaz están en español.
 - Sin despliegue productivo (TLS, secretos gestionados, observabilidad): el
   `compose.yaml` es para desarrollo.
+- Los mocks MSW de los tests unitarios no reflejan todas las reglas del backend
+  real (p. ej., MSW devuelve CONFIRMED al crear reserva; el backend real
+  devuelve PENDING si no se asigna habitación). Los tests E2E cubren el
+  comportamiento real.
 
 ---
 
 ## Verificación final
 
-- **Backend**: `mvn -B clean test` → BUILD SUCCESS, 38 tests, 0 fallos.
-  `mvn -B clean verify -DskipTests` → jar empaquetado correctamente.
-- **Frontend**: `npm run lint` → 0 errores; `npm run test` → 19 tests, 0
+- **Backend**: `mvn -B clean test` → BUILD SUCCESS, 52 tests, 0 fallos.
+- **Frontend**: `npm run lint` → 0 errores; `npm run test` → 46 tests, 0
   fallos; `npm run build` → `dist/` generado sin errores de tipo.
+- **E2E**: `npm run test:e2e` → 8 tests (requiere backend + postgres levantados).
 - **Integración**: `docker compose up` levanta PostgreSQL, ejecuta Flyway
-  (V1 + V2), arranca backend y sirve el frontend.
+  (V1–V4), arranca backend y sirve el frontend con Tailwind CSS.

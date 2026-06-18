@@ -36,14 +36,17 @@ class AuthServiceTest {
     }
 
     @Test
-    void loginSuccessReturnsTokenAndUser() {
-        AuthResponse response = authService.login("admin-test@hotel.test", "admin123");
+    void loginSuccessReturnsTokenUserAndRefreshToken() {
+        AuthService.LoginResult result = authService.login("admin-test@hotel.test", "admin123");
+        AuthResponse response = result.authResponse();
         assertNotNull(response.getToken());
         assertEquals("Bearer", response.getType());
-        assertEquals(3600, response.getExpiresIn());
+        assertEquals(900, response.getExpiresIn());
         assertNotNull(response.getUser());
         assertEquals(userId, response.getUser().getId());
         assertEquals(UserRole.ADMIN, response.getUser().getRole());
+        assertTrue(Boolean.TRUE.equals(response.getUser().getActive()));
+        assertNotNull(result.refreshToken());
     }
 
     @Test

@@ -20,9 +20,9 @@ export function formatDateTime(iso: string | null | undefined): string {
 
 export function formatCurrency(amount: number | null | undefined): string {
   if (amount == null) return '—'
-  return new Intl.NumberFormat('es-ES', {
+  return new Intl.NumberFormat('es-MX', {
     style: 'currency',
-    currency: 'EUR',
+    currency: 'MXN',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount)

@@ -13,7 +13,22 @@ import type { NormalizedError } from '../api/types'
 import type { ReservationCreateDto } from '../api/reservations.api'
 import { fullName, todayISO } from '../utils/format'
 import { getFieldErrors } from '../utils/error'
-import { ROUTES } from '../utils/constants'
+import {
+  ROUTES,
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  BTN_GHOST,
+  CARD,
+  CARD_BODY,
+  FORM_ALERT_ERROR,
+  FORM_ERROR,
+  FORM_FIELD,
+  FORM_HINT,
+  FORM_LABEL,
+  FORM_ROW,
+  FORM_ACTIONS,
+  INPUT,
+} from '../utils/constants'
 
 export function ReservationFormPage() {
   const navigate = useNavigate()
@@ -107,22 +122,22 @@ export function ReservationFormPage() {
       <PageHeader
         title="Nueva reserva"
         actions={
-          <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}>
+          <button type="button" className={BTN_SECONDARY} onClick={() => navigate(-1)}>
             Volver
           </button>
         }
       />
 
-      <form className="card card-body" onSubmit={onSubmit} noValidate style={{ maxWidth: 820 }}>
+      <form className={`${CARD} ${CARD_BODY}`} onSubmit={onSubmit} noValidate style={{ maxWidth: 820 }}>
         {submitError && (
-          <div className="form-alert form-alert-error" role="alert">{submitError}</div>
+          <div className={FORM_ALERT_ERROR} role="alert">{submitError}</div>
         )}
 
-        <div className="form-field">
-          <label className="form-label" htmlFor="guestSearch">Huésped</label>
+        <div className={FORM_FIELD}>
+          <label className={FORM_LABEL} htmlFor="guestSearch">Huésped</label>
           <input
             id="guestSearch"
-            className="input"
+            className={INPUT}
             value={guestSearch}
             placeholder={guestLabel || 'Buscar por nombre, correo o documento…'}
             onChange={(e) => {
@@ -136,23 +151,24 @@ export function ReservationFormPage() {
             autoComplete="off"
           />
           {guestId && (
-            <span className="form-hint">
+            <span className={FORM_HINT}>
               Seleccionado: <strong>{guestLabel}</strong>
             </span>
           )}
-          {mergedErrors.guestId && <span className="form-error">{mergedErrors.guestId}</span>}
+          {mergedErrors.guestId && <span className={FORM_ERROR}>{mergedErrors.guestId}</span>}
           {pickerOpen && guestSearch && (
-            <div className="card" style={{ marginTop: 6, maxHeight: 220, overflowY: 'auto' }}>
-              {guestsQ.isLoading && <div className="state state-empty">Buscando…</div>}
+            <div className="mt-1.5 max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+              {guestsQ.isLoading && (
+                <div className="px-3 py-4 text-center text-slate-500">Buscando…</div>
+              )}
               {guestsQ.data && guestsQ.data.content.length === 0 && (
-                <div className="state state-empty">Sin coincidencias.</div>
+                <div className="px-3 py-4 text-center text-slate-500">Sin coincidencias.</div>
               )}
               {guestsQ.data?.content.map((g) => (
                 <button
                   key={g.id}
                   type="button"
-                  className="btn btn-ghost"
-                  style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
+                  className={`${BTN_GHOST} w-full justify-start text-left`}
                   onClick={() => {
                     setGuestId(g.id)
                     setGuestLabel(fullName(g.firstName, g.lastName))
@@ -161,17 +177,23 @@ export function ReservationFormPage() {
                   }}
                 >
                   <strong>{fullName(g.firstName, g.lastName)}</strong>{' '}
-                  <span className="muted">· {g.documentNumber} · {g.email ?? 'sin correo'}</span>
+                  <span className="text-slate-500">· {g.documentNumber} · {g.email ?? 'sin correo'}</span>
                 </button>
               ))}
             </div>
           )}
           {!guestId && !pickerOpen && (
-            <LinkLikeBtn onClick={() => navigate(ROUTES.GUESTS)} label="¿No existe? Crear huésped" />
+            <button
+              type="button"
+              onClick={() => navigate(ROUTES.GUESTS)}
+              className="border-0 bg-transparent p-0 text-xs text-blue-600"
+            >
+              ¿No existe? Crear huésped
+            </button>
           )}
         </div>
 
-        <div className="form-row">
+        <div className={FORM_ROW}>
           <Input
             label="Entrada"
             name="checkIn"
@@ -194,7 +216,7 @@ export function ReservationFormPage() {
           />
         </div>
 
-        <div className="form-row">
+        <div className={FORM_ROW}>
           <Input
             label="Adultos"
             name="adults"
@@ -242,7 +264,7 @@ export function ReservationFormPage() {
             name="roomId"
             value={roomId}
             onChange={(e) => setRoomId(e.target.value ? Number(e.target.value) : '')}
-            wrapperClassName="form-row"
+            wrapperClassName={FORM_ROW}
           >
             <option value="">Sin asignar</option>
             {availabilityQ.isLoading && <option disabled>Cargando…</option>}
@@ -271,11 +293,11 @@ export function ReservationFormPage() {
           error={mergedErrors.specialRequests}
         />
 
-        <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}>
+        <div className={FORM_ACTIONS}>
+          <button type="button" className={BTN_SECONDARY} onClick={() => navigate(-1)}>
             Cancelar
           </button>
-          <button type="submit" className="btn btn-primary" disabled={createMut.isPending}>
+          <button type="submit" className={BTN_PRIMARY} disabled={createMut.isPending}>
             Crear reserva
           </button>
         </div>
@@ -283,13 +305,5 @@ export function ReservationFormPage() {
 
       {roomTypesQ.isError && <ErrorState error={roomTypesQ.error} />}
     </div>
-  )
-}
-
-function LinkLikeBtn({ onClick, label }: { onClick: () => void; label: string }) {
-  return (
-    <button type="button" onClick={onClick} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', padding: 0, fontSize: '0.82rem' }}>
-      {label}
-    </button>
   )
 }

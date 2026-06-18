@@ -25,7 +25,7 @@ public class JacksonConfig {
             if (value == null) {
                 gen.writeNull();
             } else {
-                gen.writeString(value.setScale(2, RoundingMode.HALF_UP).toPlainString());
+                gen.writeNumber(value.setScale(2, RoundingMode.HALF_UP));
             }
         }
     }

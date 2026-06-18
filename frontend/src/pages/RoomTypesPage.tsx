@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import clsx from 'clsx'
 import { PageHeader } from '../components/PageHeader'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/ErrorState'
@@ -18,6 +19,18 @@ import {
 import type { NormalizedError, RoomTypeDto } from '../api/types'
 import type { RoomTypeWriteDto } from '../api/roomTypes.api'
 import { getFieldErrors } from '../utils/error'
+import {
+  BADGE_BASE,
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  BTN_SM,
+  DATA_TABLE,
+  FORM_ALERT_ERROR,
+  FORM_ROW,
+  FORM_ACTIONS,
+  TABLE_TH,
+  TABLE_TD,
+} from '../utils/constants'
 
 const emptyForm: RoomTypeWriteDto = {
   name: '',
@@ -118,7 +131,7 @@ export function RoomTypesPage() {
         subtitle={isAdmin ? 'Catálogo de tipos, capacidades y precios' : 'Catálogo de tipos (solo lectura)'}
         actions={
           isAdmin && (
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
+            <button type="button" className={BTN_PRIMARY} onClick={openCreate}>
               Nuevo tipo
             </button>
           )
@@ -131,52 +144,59 @@ export function RoomTypesPage() {
         <EmptyState title="Sin tipos" message="No hay tipos de habitación registrados." />
       )}
       {!isLoading && !isError && data && data.length > 0 && (
-        <div className="data-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Descripción</th>
-                <th>Capacidad</th>
-                <th className="text-right">Precio base</th>
-                <th>Comodidades</th>
-                <th>Estado</th>
-                {isAdmin && <th>Acciones</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((rt) => (
-                <tr key={rt.id}>
-                  <td><strong>{rt.name}</strong></td>
-                  <td>{rt.description ?? '—'}</td>
-                  <td>{rt.maxCapacity}</td>
-                  <td className="text-right"><Amount value={rt.basePrice} /></td>
-                  <td>{rt.amenities.length ? rt.amenities.join(', ') : '—'}</td>
-                  <td>
-                    <span className={rt.active ? 'badge badge-green' : 'badge badge-gray'}>
-                      {rt.active ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  {isAdmin && (
-                    <td>
-                      <div className="flex-gap">
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => openEdit(rt)}>
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => setToggleTarget(rt)}
-                        >
-                          {rt.active ? 'Desactivar' : 'Activar'}
-                        </button>
-                      </div>
-                    </td>
-                  )}
+        <div className={DATA_TABLE}>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className={TABLE_TH}>Nombre</th>
+                  <th className={TABLE_TH}>Descripción</th>
+                  <th className={TABLE_TH}>Capacidad</th>
+                  <th className={`${TABLE_TH} text-right`}>Precio base</th>
+                  <th className={TABLE_TH}>Comodidades</th>
+                  <th className={TABLE_TH}>Estado</th>
+                  {isAdmin && <th className={TABLE_TH}>Acciones</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.map((rt) => (
+                  <tr key={rt.id}>
+                    <td className={TABLE_TD}><strong>{rt.name}</strong></td>
+                    <td className={TABLE_TD}>{rt.description ?? '—'}</td>
+                    <td className={TABLE_TD}>{rt.maxCapacity}</td>
+                    <td className={`${TABLE_TD} text-right`}><Amount value={rt.basePrice} /></td>
+                    <td className={TABLE_TD}>{rt.amenities.length ? rt.amenities.join(', ') : '—'}</td>
+                    <td className={TABLE_TD}>
+                      <span
+                        className={clsx(
+                          BADGE_BASE,
+                          rt.active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-800',
+                        )}
+                      >
+                        {rt.active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    {isAdmin && (
+                      <td className={TABLE_TD}>
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" className={`${BTN_SECONDARY} ${BTN_SM}`} onClick={() => openEdit(rt)}>
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className={`${BTN_SECONDARY} ${BTN_SM}`}
+                            onClick={() => setToggleTarget(rt)}
+                          >
+                            {rt.active ? 'Desactivar' : 'Activar'}
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -189,7 +209,7 @@ export function RoomTypesPage() {
         >
           <form onSubmit={onSubmit} noValidate>
             {submitError && (
-              <div className="form-alert form-alert-error" role="alert">{submitError}</div>
+              <div className={FORM_ALERT_ERROR} role="alert">{submitError}</div>
             )}
             <Input
               label="Nombre"
@@ -207,7 +227,7 @@ export function RoomTypesPage() {
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               error={fieldErrors.description}
             />
-            <div className="form-row">
+            <div className={FORM_ROW}>
               <Input
                 label="Capacidad máxima"
                 name="maxCapacity"
@@ -219,7 +239,7 @@ export function RoomTypesPage() {
                 required
               />
               <Input
-                label="Precio base (EUR)"
+                label="Precio base (MXN)"
                 name="basePrice"
                 type="number"
                 step="0.01"
@@ -237,8 +257,8 @@ export function RoomTypesPage() {
               onChange={(e) => setAmenitiesText(e.target.value)}
               hint="Ej.: WiFi, TV, Aire acondicionado"
             />
-            <div className="form-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(false)}>
+            <div className={FORM_ACTIONS}>
+              <button type="button" className={BTN_SECONDARY} onClick={() => setModalOpen(false)}>
                 Cancelar
               </button>
               <ModalSubmitButton loading={createMut.isPending || updateMut.isPending} />

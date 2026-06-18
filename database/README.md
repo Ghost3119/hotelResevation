@@ -17,9 +17,23 @@ aplique automáticamente al arrancar:
 
 ```
 backend/src/main/resources/db/migration/
-├── V1__init_schema.sql   # esquema completo
-└── V2__seed_data.sql     # datos semilla
+├── V1__init_schema.sql             # esquema base completo
+├── V2__seed_data.sql               # datos semilla (EUR-like, pre-MXN)
+├── V3__refresh_tokens.sql          # tabla refresh_tokens + índices (auth)
+└── V4__adjust_seed_prices_mxn.sql  # ajusta importes semilla a MXN realista
 ```
+
+| Versión | Tipo    | Descripción                                                                          |
+|---------|---------|--------------------------------------------------------------------------------------|
+| `V1`    | Schema  | Tablas base + extensión `btree_gist` + EXCLUDE GiST anti-solapamiento.               |
+| `V2`    | Datos   | Usuarios, tipos, habitaciones, huéspedes, reserva #1, pago #1, audit (pre-MXN).      |
+| `V3`    | Schema  | Tabla `refresh_tokens` (hash + jti + rotación + expiración) y sus cuatro índices.    |
+| `V4`    | Datos   | `UPDATE` de `room_types.base_price`, `reservations` #1, `payments` #1 y `audit_events` #2 a MXN realista. |
+
+> `schema.sql` refleja el estado de esquema tras `V1` + `V3` (V2 y V4 son solo
+> datos). `seed.sql` refleja el estado de datos tras `V2` + `V4` (importes ya en
+> MXN). Las migraciones ya aplicadas (`V1`, `V2`) **no se modifican**; los
+> ajustes posteriores van en nuevas versiones (`V3`, `V4`).
 
 Flyway las descubre vía `spring.flyway.enabled=true`
 (ver `.env.example` / `compose.yaml`) y las aplica contra el datasource

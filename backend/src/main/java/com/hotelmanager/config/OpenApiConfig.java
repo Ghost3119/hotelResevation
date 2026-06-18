@@ -20,7 +20,7 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Hotel Manager API")
                         .version("0.1.0")
-                        .description("Sistema de gestión hotelera (PMS). Backend Spring Boot 3 + JWT."))
+                        .description("Sistema de gestión hotelera (PMS). Backend Spring Boot 3 + JWT. Moneda: MXN."))
                 .servers(List.of(new Server().url("/api")))
                 .components(new Components()
                         .addSecuritySchemes("bearerAuth", new SecurityScheme()

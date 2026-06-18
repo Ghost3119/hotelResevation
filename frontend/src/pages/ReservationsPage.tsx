@@ -11,7 +11,14 @@ import { ReservationStatusBadge } from '../components/StatusBadge'
 import { useReservations } from '../hooks/useReservations'
 import type { ReservationDto, ReservationStatus } from '../api/types'
 import { formatDate } from '../utils/format'
-import { PAGE_SIZE_DEFAULT, RESERVATION_STATUSES, RESERVATION_STATUS_LABELS, ROUTES } from '../utils/constants'
+import {
+  PAGE_SIZE_DEFAULT,
+  RESERVATION_STATUSES,
+  RESERVATION_STATUS_LABELS,
+  ROUTES,
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+} from '../utils/constants'
 
 export function ReservationsPage() {
   const navigate = useNavigate()
@@ -29,7 +36,7 @@ export function ReservationsPage() {
   const { data, isLoading, isError, error, refetch, isFetching } = useReservations(params)
 
   const columns: Column<ReservationDto>[] = [
-    { key: 'id', header: 'ID', render: (r) => <Link to={ROUTES.reservationDetail(r.id)}>#{r.id}</Link> },
+    { key: 'id', header: 'ID', render: (r) => <Link to={ROUTES.reservationDetail(r.id)} className="text-blue-600 hover:underline">#{r.id}</Link> },
     { key: 'guestName', header: 'Huésped', render: (r) => r.guestName },
     { key: 'checkIn', header: 'Entrada', render: (r) => formatDate(r.checkIn) },
     { key: 'checkOut', header: 'Salida', render: (r) => formatDate(r.checkOut) },
@@ -48,7 +55,7 @@ export function ReservationsPage() {
         actions={
           <button
             type="button"
-            className="btn btn-primary"
+            className={BTN_PRIMARY}
             onClick={() => navigate(ROUTES.RESERVATION_NEW)}
           >
             Nueva reserva
@@ -56,7 +63,7 @@ export function ReservationsPage() {
         }
       />
 
-      <div className="toolbar">
+      <div className="mb-4 flex flex-wrap items-end gap-2.5">
         <Select
           label="Estado"
           name="status"
@@ -86,7 +93,7 @@ export function ReservationsPage() {
         {(status || checkIn) && (
           <button
             type="button"
-            className="btn btn-secondary"
+            className={BTN_SECONDARY}
             onClick={() => {
               setStatus('')
               setCheckIn('')

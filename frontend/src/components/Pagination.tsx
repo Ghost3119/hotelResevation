@@ -1,3 +1,6 @@
+import clsx from 'clsx'
+import { BTN, BTN_SECONDARY, BTN_SM } from '../utils/constants'
+
 interface PaginationProps {
   page: number
   size: number
@@ -19,16 +22,16 @@ export function Pagination({
   const pages = computePages(page, totalPages)
 
   return (
-    <div className="pagination">
-      <span className="pagination-info">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-3 py-2.5">
+      <span className="text-xs text-slate-500">
         {totalElements === 0
           ? '0 resultados'
           : `${from}–${to} de ${totalElements}`}
       </span>
-      <div className="pagination-controls">
+      <div className="flex flex-wrap items-center gap-1">
         <button
           type="button"
-          className="btn btn-secondary btn-sm"
+          className={clsx(BTN_SECONDARY, BTN_SM)}
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 0}
         >
@@ -36,12 +39,18 @@ export function Pagination({
         </button>
         {pages.map((p, idx) =>
           p === '…' ? (
-            <span key={`gap-${idx}`} className="pagination-gap">…</span>
+            <span key={`gap-${idx}`} className="px-1 text-slate-500">…</span>
           ) : (
             <button
               key={p}
               type="button"
-              className={p === page ? 'btn btn-page active' : 'btn btn-page'}
+              className={clsx(
+                BTN,
+                'min-w-[34px] px-2.5 py-1 text-xs',
+                p === page
+                  ? 'border-blue-600 bg-blue-600 text-white'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+              )}
               onClick={() => onPageChange(p)}
             >
               {p + 1}
@@ -50,7 +59,7 @@ export function Pagination({
         )}
         <button
           type="button"
-          className="btn btn-secondary btn-sm"
+          className={clsx(BTN_SECONDARY, BTN_SM)}
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages - 1}
         >

@@ -16,7 +16,7 @@ interface AuthContextValue {
   token: string | null
   loading: boolean
   login: (data: LoginRequest) => Promise<UserDto>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -66,10 +66,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return res.user
   }, [])
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_TOKEN_KEY)
-    setToken(null)
-    setUser(null)
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout()
+    } catch {
+      // ignore network/server errors on logout — still clear locally
+    } finally {
+      localStorage.removeItem(STORAGE_TOKEN_KEY)
+      setToken(null)
+      setUser(null)
+    }
   }, [])
 
   const value = useMemo<AuthContextValue>(

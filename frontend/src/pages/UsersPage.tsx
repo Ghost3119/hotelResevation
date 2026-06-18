@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import clsx from 'clsx'
 import { PageHeader } from '../components/PageHeader'
 import { DataTable, type Column } from '../components/DataTable'
 import { LoadingState } from '../components/LoadingState'
@@ -13,7 +14,17 @@ import type { NormalizedError, UserDto, UserRole } from '../api/types'
 import type { UserWriteDto } from '../api/users.api'
 import { getFieldErrors } from '../utils/error'
 import { useDebounce } from '../hooks/useDebounce'
-import { PAGE_SIZE_DEFAULT, ROLE_LABELS } from '../utils/constants'
+import {
+  PAGE_SIZE_DEFAULT,
+  ROLE_LABELS,
+  BADGE_BASE,
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  BTN_SM,
+  FORM_ALERT_ERROR,
+  FORM_ROW,
+  FORM_ACTIONS,
+} from '../utils/constants'
 
 const emptyForm: UserWriteDto = {
   email: '',
@@ -108,7 +119,12 @@ export function UsersPage() {
       key: 'active',
       header: 'Estado',
       render: (u) => (
-        <span className={u.active ? 'badge badge-green' : 'badge badge-gray'}>
+        <span
+          className={clsx(
+            BADGE_BASE,
+            u.active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-800',
+          )}
+        >
           {u.active ? 'Activo' : 'Inactivo'}
         </span>
       ),
@@ -117,13 +133,13 @@ export function UsersPage() {
       key: 'actions',
       header: 'Acciones',
       render: (u) => (
-        <div className="flex-gap">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => openEdit(u)}>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={`${BTN_SECONDARY} ${BTN_SM}`} onClick={() => openEdit(u)}>
             Editar
           </button>
           <button
             type="button"
-            className="btn btn-secondary btn-sm"
+            className={`${BTN_SECONDARY} ${BTN_SM}`}
             onClick={() => setToggleTarget(u)}
           >
             {u.active ? 'Desactivar' : 'Activar'}
@@ -139,13 +155,13 @@ export function UsersPage() {
         title="Usuarios"
         subtitle="Gestión de usuarios y roles"
         actions={
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
+          <button type="button" className={BTN_PRIMARY} onClick={openCreate}>
             Nuevo usuario
           </button>
         }
       />
 
-      <div className="toolbar">
+      <div className="mb-4 flex flex-wrap items-end gap-2.5">
         <Input
           label="Buscar"
           name="search"
@@ -155,7 +171,7 @@ export function UsersPage() {
             setPage(0)
           }}
           placeholder="Nombre o correo…"
-          style={{ minWidth: 240 }}
+          wrapperClassName="min-w-[240px]"
         />
       </div>
 
@@ -187,7 +203,7 @@ export function UsersPage() {
       >
         <form onSubmit={onSubmit} noValidate>
           {submitError && (
-            <div className="form-alert form-alert-error" role="alert">{submitError}</div>
+            <div className={FORM_ALERT_ERROR} role="alert">{submitError}</div>
           )}
           <Input
             label="Nombre completo"
@@ -215,7 +231,7 @@ export function UsersPage() {
             error={fieldErrors.password}
             required={!editing}
           />
-          <div className="form-row">
+          <div className={FORM_ROW}>
             <Select
               label="Rol"
               name="role"
@@ -237,8 +253,8 @@ export function UsersPage() {
               <option value="false">Inactivo</option>
             </Select>
           </div>
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(false)}>
+          <div className={FORM_ACTIONS}>
+            <button type="button" className={BTN_SECONDARY} onClick={() => setModalOpen(false)}>
               Cancelar
             </button>
             <ModalSubmitButton loading={createMut.isPending || updateMut.isPending} />

@@ -1,5 +1,13 @@
 import type { ReactNode } from 'react'
+import clsx from 'clsx'
 import { Pagination } from './Pagination'
+import {
+  DATA_TABLE,
+  ROW_CLICKABLE,
+  TABLE_EMPTY_TD,
+  TABLE_TD,
+  TABLE_TH,
+} from '../utils/constants'
 
 export interface Column<T> {
   key: string
@@ -34,12 +42,12 @@ export function DataTable<T>({
   empty,
 }: DataTableProps<T>) {
   return (
-    <div className="data-table">
-      <table>
+    <div className={DATA_TABLE}>
+      <table className="w-full border-collapse">
         <thead>
           <tr>
             {columns.map((col) => (
-              <th key={col.key} className={col.className}>
+              <th key={col.key} className={clsx(TABLE_TH, col.className)}>
                 {col.header}
               </th>
             ))}
@@ -47,18 +55,18 @@ export function DataTable<T>({
         </thead>
         <tbody>
           {data.length === 0 ? (
-            <tr className="data-table-empty-row">
-              <td colSpan={columns.length}>{empty ?? 'Sin resultados.'}</td>
+            <tr>
+              <td className={TABLE_EMPTY_TD} colSpan={columns.length}>{empty ?? 'Sin resultados.'}</td>
             </tr>
           ) : (
             data.map((row) => (
               <tr
                 key={rowKey(row)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
-                className={onRowClick ? 'row-clickable' : undefined}
+                className={onRowClick ? ROW_CLICKABLE : undefined}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={col.className}>
+                  <td key={col.key} className={clsx(TABLE_TD, col.className)}>
                     {col.render
                       ? col.render(row)
                       : String((row as Record<string, unknown>)[col.key] ?? '')}

@@ -9,6 +9,12 @@ import { useAvailability } from '../hooks/useAvailability'
 import { useRoomTypes } from '../hooks/useRoomTypes'
 import type { AvailabilityParams } from '../api/availability.api'
 import { todayISO } from '../utils/format'
+import {
+  BTN_PRIMARY,
+  CARD,
+  CARD_BODY,
+  FORM_ALERT_ERROR,
+} from '../utils/constants'
 
 export function AvailabilityPage() {
   const [checkIn, setCheckIn] = useState('')
@@ -43,7 +49,7 @@ export function AvailabilityPage() {
     <div>
       <PageHeader title="Disponibilidad" subtitle="Buscar habitaciones libres por fecha y capacidad" />
 
-      <form className="card card-body toolbar" onSubmit={onSubmit} noValidate>
+      <form className={`${CARD} ${CARD_BODY} mb-4 flex flex-wrap items-end gap-2.5`} onSubmit={onSubmit} noValidate>
         <Input
           label="Entrada"
           name="checkIn"
@@ -86,12 +92,12 @@ export function AvailabilityPage() {
               </option>
             ))}
         </Select>
-        <button type="submit" className="btn btn-primary">
+        <button type="submit" className={BTN_PRIMARY}>
           Buscar
         </button>
       </form>
 
-      {error && <div className="form-alert form-alert-error" role="alert">{error}</div>}
+      {error && <div className={FORM_ALERT_ERROR} role="alert">{error}</div>}
 
       {!params && !error && (
         <EmptyState title="Indique criterios de búsqueda" message="Seleccione fechas y número de huéspedes para ver la disponibilidad." />
@@ -106,16 +112,16 @@ export function AvailabilityPage() {
 
       {params && availabilityQ.data && availabilityQ.data.length > 0 && (
         <>
-          <h3 className="section-title">
+          <h3 className="my-2.5 text-base font-semibold text-slate-900">
             {availabilityQ.data.length} habitación{availabilityQ.data.length === 1 ? '' : 'es'} disponible{availabilityQ.data.length === 1 ? '' : 's'}
           </h3>
-          <div className="avail-grid">
+          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
             {availabilityQ.data.map((room) => (
-              <div key={room.roomId} className="avail-card">
-                <span className="avail-number">Hab. {room.number}</span>
-                <span className="avail-meta">Piso {room.floor} · {room.roomTypeName}</span>
-                <span className="avail-meta">Capacidad: {room.maxCapacity} huéspedes</span>
-                <span className="detail-value">
+              <div key={room.roomId} className="flex flex-col gap-1.5 rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm">
+                <span className="text-xl font-bold text-slate-900">Hab. {room.number}</span>
+                <span className="text-sm text-slate-500">Piso {room.floor} · {room.roomTypeName}</span>
+                <span className="text-sm text-slate-500">Capacidad: {room.maxCapacity} huéspedes</span>
+                <span className="font-semibold text-slate-900">
                   <Amount value={room.basePrice} /> / noche
                 </span>
               </div>

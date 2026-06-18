@@ -22,7 +22,17 @@ import { useRoomTypes } from '../hooks/useRoomTypes'
 import type { NormalizedError, RoomDto, RoomStatus } from '../api/types'
 import type { RoomWriteDto } from '../api/rooms.api'
 import { getFieldErrors } from '../utils/error'
-import { PAGE_SIZE_DEFAULT, ROOM_STATUSES, ROOM_STATUS_LABELS } from '../utils/constants'
+import {
+  PAGE_SIZE_DEFAULT,
+  ROOM_STATUSES,
+  ROOM_STATUS_LABELS,
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  BTN_SM,
+  FORM_ALERT_ERROR,
+  FORM_ROW,
+  FORM_ACTIONS,
+} from '../utils/constants'
 
 type RoomFormState = RoomWriteDto
 
@@ -159,16 +169,16 @@ export function RoomsPage() {
       key: 'actions',
       header: 'Acciones',
       render: (r) => (
-        <div className="flex-gap">
+        <div className="flex flex-wrap gap-2">
           {isAdmin && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => openEdit(r)}>
+            <button type="button" className={`${BTN_SECONDARY} ${BTN_SM}`} onClick={() => openEdit(r)}>
               Editar
             </button>
           )}
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => confirmStatus(r)}>
+          <button type="button" className={`${BTN_SECONDARY} ${BTN_SM}`} onClick={() => confirmStatus(r)}>
             Cambiar estado
           </button>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => openObs(r)}>
+          <button type="button" className={`${BTN_SECONDARY} ${BTN_SM}`} onClick={() => openObs(r)}>
             Observaciones
           </button>
         </div>
@@ -183,14 +193,14 @@ export function RoomsPage() {
         subtitle="Gestión y estados de habitaciones"
         actions={
           <RoleGate roles={['ADMIN']}>
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
+            <button type="button" className={BTN_PRIMARY} onClick={openCreate}>
               Nueva habitación
             </button>
           </RoleGate>
         }
       />
 
-      <div className="toolbar">
+      <div className="mb-4 flex flex-wrap items-end gap-2.5">
         <Input
           label="Piso"
           name="floor"
@@ -237,7 +247,7 @@ export function RoomsPage() {
         {(floor || roomTypeId || statusFilter) && (
           <button
             type="button"
-            className="btn btn-secondary"
+            className={BTN_SECONDARY}
             onClick={() => {
               setFloor('')
               setRoomTypeId('')
@@ -278,9 +288,9 @@ export function RoomsPage() {
       >
         <form onSubmit={onSubmit} noValidate>
           {submitError && (
-            <div className="form-alert form-alert-error" role="alert">{submitError}</div>
+            <div className={FORM_ALERT_ERROR} role="alert">{submitError}</div>
           )}
-          <div className="form-row">
+          <div className={FORM_ROW}>
             <Input
               label="Número"
               name="number"
@@ -337,8 +347,8 @@ export function RoomsPage() {
             onChange={(e) => setForm({ ...form, observations: e.target.value })}
             error={fieldErrors.observations}
           />
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setFormOpen(false)}>
+          <div className={FORM_ACTIONS}>
+            <button type="button" className={BTN_SECONDARY} onClick={() => setFormOpen(false)}>
               Cancelar
             </button>
             <ModalSubmitButton loading={createMut.isPending || updateMut.isPending} />
@@ -352,7 +362,7 @@ export function RoomsPage() {
         onClose={() => setStatusTarget(null)}
         size="sm"
       >
-        <p className="muted">
+        <p className="text-sm text-slate-500">
           {statusTarget
             ? `Habitación ${statusTarget.number} — estado actual: ${ROOM_STATUS_LABELS[statusTarget.status]}.`
             : ''}
@@ -369,11 +379,11 @@ export function RoomsPage() {
             </option>
           ))}
         </Select>
-        <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => setStatusTarget(null)}>
+        <div className={FORM_ACTIONS}>
+          <button type="button" className={BTN_SECONDARY} onClick={() => setStatusTarget(null)}>
             Cancelar
           </button>
-          <button type="button" className="btn btn-primary" onClick={applyStatus} disabled={setStatusMut.isPending}>
+          <button type="button" className={BTN_PRIMARY} onClick={applyStatus} disabled={setStatusMut.isPending}>
             Aplicar
           </button>
         </div>
@@ -392,11 +402,11 @@ export function RoomsPage() {
           value={obsValue}
           onChange={(e) => setObsValue(e.target.value)}
         />
-        <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => setObsTarget(null)}>
+        <div className={FORM_ACTIONS}>
+          <button type="button" className={BTN_SECONDARY} onClick={() => setObsTarget(null)}>
             Cancelar
           </button>
-          <button type="button" className="btn btn-primary" onClick={applyObs} disabled={setObsMut.isPending}>
+          <button type="button" className={BTN_PRIMARY} onClick={applyObs} disabled={setObsMut.isPending}>
             Guardar
           </button>
         </div>
