@@ -1,0 +1,15 @@
+package com.hotelmanager.repository;
+
+import com.hotelmanager.domain.PersonalDataAccessLog;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface PersonalDataAccessLogRepository extends JpaRepository<PersonalDataAccessLog, Long> {
+
+    List<PersonalDataAccessLog> findByGuestIdOrderByCreatedAtDesc(Long guestId);
+
+    List<PersonalDataAccessLog> findAllByOrderByCreatedAtDesc();
+}

@@ -45,6 +45,9 @@ public class Guest {
     @Column(name = "nationality")
     private String nationality;
 
+    @Column(name = "do_not_contact", nullable = false)
+    private Boolean doNotContact = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

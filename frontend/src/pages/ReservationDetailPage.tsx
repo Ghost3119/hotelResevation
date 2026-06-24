@@ -6,16 +6,33 @@ import { ErrorState } from '../components/ErrorState'
 import { Amount } from '../components/Amount'
 import { Modal, ModalSubmitButton } from '../components/Modal'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { Input, Select } from '../components/FormField'
+import { Input, Select, TextArea } from '../components/FormField'
 import { PaymentStatusBadge, ReservationStatusBadge } from '../components/StatusBadge'
 import { useToast } from '../components/Toast'
-import { useAssignRoom, useCancelReservation, useCheckIn, useCheckOut, useReservation } from '../hooks/useReservations'
+import {
+  useAssignRoom,
+  useCancelReservation,
+  useChangeRoom,
+  useCheckIn,
+  useCheckOut,
+  useModifyStay,
+  useNoShow,
+  useReservation,
+} from '../hooks/useReservations'
 import { useCreatePayment, useReservationPayments, useSetPaymentStatus } from '../hooks/usePayments'
 import { useAvailability } from '../hooks/useAvailability'
+import { useNightlyRates } from '../hooks/useNightlyRates'
+import { useAdjustments } from '../hooks/useAdjustments'
+import { useRooms } from '../hooks/useRooms'
 import type { NormalizedError, PaymentMethod, PaymentStatus } from '../api/types'
+import type {
+  ModifyStayDto,
+  NoShowDto,
+} from '../api/generated/schema'
 import { getFieldErrors } from '../utils/error'
 import { formatCurrency, formatDate, formatDateTime, todayISO } from '../utils/format'
 import {
+  ADJUSTMENT_TYPE_LABELS,
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
   ROUTES,
@@ -43,6 +60,9 @@ export function ReservationDetailPage() {
 
   const { data: reservation, isLoading, isError, error, refetch } = useReservation(reservationId)
   const paymentsQ = useReservationPayments(reservationId)
+  const nightlyQ = useNightlyRates(reservationId)
+  const adjustmentsQ = useAdjustments(reservationId)
+  const roomsQ = useRooms({ size: 200 })
 
   const assignMut = useAssignRoom()
   const cancelMut = useCancelReservation()
@@ -50,6 +70,9 @@ export function ReservationDetailPage() {
   const checkOutMut = useCheckOut()
   const createPaymentMut = useCreatePayment()
   const setPaymentStatusMut = useSetPaymentStatus()
+  const modifyStayMut = useModifyStay()
+  const changeRoomMut = useChangeRoom()
+  const noShowMut = useNoShow()
 
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignRoomId, setAssignRoomId] = useState<number | ''>('')
@@ -64,6 +87,22 @@ export function ReservationDetailPage() {
   const [payReference, setPayReference] = useState('')
   const [payErrors, setPayErrors] = useState<Record<string, string>>({})
   const [paySubmitError, setPaySubmitError] = useState<string | null>(null)
+
+  const [activeTab, setActiveTab] = useState<'payments' | 'nightly' | 'adjustments'>('payments')
+
+  // Modify stay (ER-13)
+  const [modifyOpen, setModifyOpen] = useState(false)
+  const [modifyForm, setModifyForm] = useState({ newCheckIn: '', newCheckOut: '', reason: '' })
+  const [modifyPending, setModifyPending] = useState<ModifyStayDto | null>(null)
+
+  // Change room (ER-16)
+  const [changeRoomOpen, setChangeRoomOpen] = useState(false)
+  const [changeRoomForm, setChangeRoomForm] = useState({ newRoomId: '', reason: '' })
+  const [changeRoomPending, setChangeRoomPending] = useState<{ newRoomId: number; reason: string | null } | null>(null)
+
+  // No-show (ER-11)
+  const [noShowOpen, setNoShowOpen] = useState(false)
+  const [noShowReason, setNoShowReason] = useState('')
 
   const availabilityParams =
     reservation && (reservation.status === 'PENDING' || reservation.status === 'CONFIRMED')
@@ -85,6 +124,14 @@ export function ReservationDetailPage() {
     reservation.checkIn > todayISO()
   const canCheckIn = reservation.status === 'CONFIRMED'
   const canCheckOut = reservation.status === 'CHECKED_IN'
+  // ER-13: modify stay only for PENDING/CONFIRMED with future checkIn
+  const canModifyStay =
+    (reservation.status === 'PENDING' || reservation.status === 'CONFIRMED') &&
+    reservation.checkIn > todayISO()
+  // ER-16: change room only for CHECKED_IN
+  const canChangeRoom = reservation.status === 'CHECKED_IN'
+  // ER-11: manual no-show for CONFIRMED with checkIn <= today
+  const canNoShow = reservation.status === 'CONFIRMED' && reservation.checkIn <= todayISO()
 
   const handleAssign = async (e: FormEvent) => {
     e.preventDefault()
@@ -170,6 +217,78 @@ export function ReservationDetailPage() {
     }
   }
 
+  const openModify = () => {
+    setModifyForm({ newCheckIn: reservation.checkIn, newCheckOut: reservation.checkOut, reason: '' })
+    setModifyPending(null)
+    setModifyOpen(true)
+  }
+
+  const reviewModify = (e: FormEvent) => {
+    e.preventDefault()
+    if (!modifyForm.newCheckIn || !modifyForm.newCheckOut) return
+    if (modifyForm.newCheckOut <= modifyForm.newCheckIn) {
+      toast.error('La salida debe ser posterior a la entrada.')
+      return
+    }
+    setModifyPending({
+      newCheckIn: modifyForm.newCheckIn,
+      newCheckOut: modifyForm.newCheckOut,
+      reason: modifyForm.reason.trim() || null,
+    })
+    setModifyOpen(false)
+  }
+
+  const applyModify = async () => {
+    if (!modifyPending) return
+    try {
+      const updated = await modifyStayMut.mutateAsync({ id: reservation.id, data: modifyPending })
+      toast.success(`Estancia modificada. Nuevo total: ${formatCurrency(updated.totalAmount)}.`)
+      setModifyPending(null)
+    } catch (err) {
+      toast.error((err as NormalizedError).message)
+    }
+  }
+
+  const openChangeRoom = () => {
+    setChangeRoomForm({ newRoomId: '', reason: '' })
+    setChangeRoomPending(null)
+    setChangeRoomOpen(true)
+  }
+
+  const reviewChangeRoom = (e: FormEvent) => {
+    e.preventDefault()
+    if (!changeRoomForm.newRoomId) return
+    setChangeRoomPending({
+      newRoomId: Number(changeRoomForm.newRoomId),
+      reason: changeRoomForm.reason.trim() || null,
+    })
+    setChangeRoomOpen(false)
+  }
+
+  const applyChangeRoom = async () => {
+    if (!changeRoomPending) return
+    try {
+      await changeRoomMut.mutateAsync({ id: reservation.id, data: changeRoomPending })
+      toast.success('Habitación cambiada.')
+      setChangeRoomPending(null)
+    } catch (err) {
+      toast.error((err as NormalizedError).message)
+    }
+  }
+
+  const handleNoShow = async (e: FormEvent) => {
+    e.preventDefault()
+    try {
+      const data: NoShowDto = { reason: noShowReason.trim() || null }
+      await noShowMut.mutateAsync({ id: reservation.id, data })
+      toast.success('Reserva marcada como no-show.')
+      setNoShowOpen(false)
+      setNoShowReason('')
+    } catch (err) {
+      toast.error((err as NormalizedError).message)
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -212,6 +331,25 @@ export function ReservationDetailPage() {
                 onClick={() => setCheckOutOpen(true)}
               >
                 Check-out
+              </button>
+            )}
+            {canModifyStay && (
+              <button type="button" className={BTN_SECONDARY} onClick={openModify}>
+                Modificar estancia
+              </button>
+            )}
+            {canChangeRoom && (
+              <button type="button" className={BTN_SECONDARY} onClick={openChangeRoom}>
+                Cambiar habitación
+              </button>
+            )}
+            {canNoShow && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-md border border-orange-600 bg-orange-50 px-4 py-2 text-sm font-medium text-orange-700 hover:bg-orange-100"
+                onClick={() => setNoShowOpen(true)}
+              >
+                Marcar no-show
               </button>
             )}
             {canCancel && (
@@ -300,9 +438,9 @@ export function ReservationDetailPage() {
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className={TABLE_TH}>Habitación</th>
-                <th className={TABLE_TH}>Entrada</th>
-                <th className={TABLE_TH}>Salida</th>
+                <th scope="col" className={TABLE_TH}>Habitación</th>
+                <th scope="col" className={TABLE_TH}>Entrada</th>
+                <th scope="col" className={TABLE_TH}>Salida</th>
               </tr>
             </thead>
             <tbody>
@@ -324,76 +462,192 @@ export function ReservationDetailPage() {
         </div>
       </div>
 
-      <h3 className="my-2.5 text-base font-semibold text-slate-900">Pagos</h3>
-      {paymentsQ.isLoading && <LoadingState />}
-      {paymentsQ.isError && <ErrorState error={paymentsQ.error} onRetry={() => paymentsQ.refetch()} />}
-      {paymentsQ.data && (
-        <div className={DATA_TABLE}>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className={TABLE_TH}>ID</th>
-                  <th className={`${TABLE_TH} text-right`}>Importe</th>
-                  <th className={TABLE_TH}>Método</th>
-                  <th className={TABLE_TH}>Estado</th>
-                  <th className={TABLE_TH}>Referencia</th>
-                  <th className={TABLE_TH}>Fecha</th>
-                  <th className={TABLE_TH}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paymentsQ.data.length === 0 ? (
-                  <tr>
-                    <td className={TABLE_EMPTY_TD} colSpan={7}>Sin pagos registrados.</td>
-                  </tr>
-                ) : (
-                  paymentsQ.data.map((p) => (
-                    <tr key={p.id}>
-                      <td className={TABLE_TD}>#{p.id}</td>
-                      <td className={`${TABLE_TD} text-right`}><Amount value={p.amount} /></td>
-                      <td className={TABLE_TD}>{PAYMENT_METHOD_LABELS[p.method]}</td>
-                      <td className={TABLE_TD}><PaymentStatusBadge status={p.status} /></td>
-                      <td className={TABLE_TD}>{p.reference ?? '—'}</td>
-                      <td className={TABLE_TD}>{formatDateTime(p.paidAt)}</td>
-                      <td className={TABLE_TD}>
-                        <div className="flex flex-wrap gap-2">
-                          {p.status === 'COMPLETED' && (
-                            <>
-                              <button
-                                type="button"
-                                className={`${BTN_SECONDARY} ${BTN_SM}`}
-                                onClick={() => handlePaymentStatus(p.id, 'REFUNDED')}
-                              >
-                                Reembolsar
-                              </button>
-                              <button
-                                type="button"
-                                className={`${BTN_SECONDARY} ${BTN_SM}`}
-                                onClick={() => handlePaymentStatus(p.id, 'CANCELLED')}
-                              >
-                                Anular
-                              </button>
-                            </>
-                          )}
-                          {p.status === 'PENDING' && (
-                            <button
-                              type="button"
-                              className={`${BTN_SECONDARY} ${BTN_SM}`}
-                              onClick={() => handlePaymentStatus(p.id, 'COMPLETED')}
-                            >
-                              Completar
-                            </button>
-                          )}
-                        </div>
-                      </td>
+      <div role="tablist" aria-label="Secciones de la reserva" className="mt-2 flex flex-wrap gap-1 border-b border-slate-200">
+        {([
+          ['payments', 'Pagos'],
+          ['nightly', 'Tarifas por noche'],
+          ['adjustments', 'Ajustes'],
+        ] as const).map(([key, label]) => (
+          <button
+            key={key}
+            role="tab"
+            type="button"
+            aria-selected={activeTab === key}
+            onClick={() => setActiveTab(key)}
+            className={
+              activeTab === key
+                ? 'border-b-2 border-blue-600 px-3 py-2 text-sm font-semibold text-blue-600'
+                : 'border-b-2 border-transparent px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-800'
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'payments' && (
+        <>
+          {paymentsQ.isLoading && <LoadingState />}
+          {paymentsQ.isError && <ErrorState error={paymentsQ.error} onRetry={() => paymentsQ.refetch()} />}
+          {paymentsQ.data && (
+            <div className={DATA_TABLE}>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th scope="col" className={TABLE_TH}>ID</th>
+                      <th scope="col" className={`${TABLE_TH} text-right`}>Importe</th>
+                      <th scope="col" className={TABLE_TH}>Método</th>
+                      <th scope="col" className={TABLE_TH}>Estado</th>
+                      <th scope="col" className={TABLE_TH}>Referencia</th>
+                      <th scope="col" className={TABLE_TH}>Fecha</th>
+                      <th scope="col" className={TABLE_TH}>Acciones</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  </thead>
+                  <tbody>
+                    {paymentsQ.data.length === 0 ? (
+                      <tr>
+                        <td className={TABLE_EMPTY_TD} colSpan={7}>Sin pagos registrados.</td>
+                      </tr>
+                    ) : (
+                      paymentsQ.data.map((p) => (
+                        <tr key={p.id}>
+                          <td className={TABLE_TD}>#{p.id}</td>
+                          <td className={`${TABLE_TD} text-right`}><Amount value={p.amount} /></td>
+                          <td className={TABLE_TD}>{PAYMENT_METHOD_LABELS[p.method]}</td>
+                          <td className={TABLE_TD}><PaymentStatusBadge status={p.status} /></td>
+                          <td className={TABLE_TD}>{p.reference ?? '—'}</td>
+                          <td className={TABLE_TD}>{formatDateTime(p.paidAt)}</td>
+                          <td className={TABLE_TD}>
+                            <div className="flex flex-wrap gap-2">
+                              {p.status === 'COMPLETED' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className={`${BTN_SECONDARY} ${BTN_SM}`}
+                                    onClick={() => handlePaymentStatus(p.id, 'REFUNDED')}
+                                  >
+                                    Reembolsar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`${BTN_SECONDARY} ${BTN_SM}`}
+                                    onClick={() => handlePaymentStatus(p.id, 'CANCELLED')}
+                                  >
+                                    Anular
+                                  </button>
+                                </>
+                              )}
+                              {p.status === 'PENDING' && (
+                                <button
+                                  type="button"
+                                  className={`${BTN_SECONDARY} ${BTN_SM}`}
+                                  onClick={() => handlePaymentStatus(p.id, 'COMPLETED')}
+                                >
+                                  Completar
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'nightly' && (
+        <>
+          {nightlyQ.isLoading && <LoadingState />}
+          {nightlyQ.isError && <ErrorState error={nightlyQ.error} onRetry={() => nightlyQ.refetch()} />}
+          {nightlyQ.data && (
+            <div className={DATA_TABLE}>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th scope="col" className={TABLE_TH}>Noche</th>
+                      <th scope="col" className={`${TABLE_TH} text-right`}>Tarifa base</th>
+                      <th scope="col" className={`${TABLE_TH} text-right`}>Cargo extra</th>
+                      <th scope="col" className={`${TABLE_TH} text-right`}>Descuento</th>
+                      <th scope="col" className={`${TABLE_TH} text-right`}>Impuestos</th>
+                      <th scope="col" className={`${TABLE_TH} text-right`}>Cargos</th>
+                      <th scope="col" className={`${TABLE_TH} text-right`}>Total</th>
+                      <th scope="col" className={TABLE_TH}>Incluida</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nightlyQ.data.length === 0 ? (
+                      <tr>
+                        <td className={TABLE_EMPTY_TD} colSpan={8}>Sin tarifas por noche.</td>
+                      </tr>
+                    ) : (
+                      nightlyQ.data.map((n) => (
+                        <tr key={n.id}>
+                          <td className={TABLE_TD}>{formatDate(n.nightDate)}</td>
+                          <td className={`${TABLE_TD} text-right`}>{formatCurrency(n.baseRate)}</td>
+                          <td className={`${TABLE_TD} text-right`}>{formatCurrency(n.extraPersonCharge)}</td>
+                          <td className={`${TABLE_TD} text-right`}>{formatCurrency(n.discountAmount)}</td>
+                          <td className={`${TABLE_TD} text-right`}>{formatCurrency(n.taxesAmount)}</td>
+                          <td className={`${TABLE_TD} text-right`}>{formatCurrency(n.feesAmount)}</td>
+                          <td className={`${TABLE_TD} text-right font-semibold`}>{formatCurrency(n.total)}</td>
+                          <td className={TABLE_TD}>{n.included ? 'Sí' : 'No'}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'adjustments' && (
+        <>
+          {adjustmentsQ.isLoading && <LoadingState />}
+          {adjustmentsQ.isError && <ErrorState error={adjustmentsQ.error} onRetry={() => adjustmentsQ.refetch()} />}
+          {adjustmentsQ.data && (
+            <div className={DATA_TABLE}>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th scope="col" className={TABLE_TH}>Tipo</th>
+                      <th scope="col" className={TABLE_TH}>Valor anterior</th>
+                      <th scope="col" className={TABLE_TH}>Valor nuevo</th>
+                      <th scope="col" className={TABLE_TH}>Motivo</th>
+                      <th scope="col" className={TABLE_TH}>Usuario</th>
+                      <th scope="col" className={TABLE_TH}>Fecha</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adjustmentsQ.data.length === 0 ? (
+                      <tr>
+                        <td className={TABLE_EMPTY_TD} colSpan={6}>Sin ajustes registrados.</td>
+                      </tr>
+                    ) : (
+                      adjustmentsQ.data.map((a) => (
+                        <tr key={a.id}>
+                          <td className={TABLE_TD}>{ADJUSTMENT_TYPE_LABELS[a.adjustmentType]}</td>
+                          <td className={TABLE_TD}>{a.oldValue ?? '—'}</td>
+                          <td className={TABLE_TD}>{a.newValue ?? '—'}</td>
+                          <td className={TABLE_TD}>{a.reason ?? '—'}</td>
+                          <td className={TABLE_TD}>{a.userId ? `#${a.userId}` : '—'}</td>
+                          <td className={TABLE_TD}>{formatDateTime(a.createdAt)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Assign room modal */}
@@ -516,6 +770,164 @@ export function ReservationDetailPage() {
         onConfirm={handleCheckOut}
         onCancel={() => setCheckOutOpen(false)}
       />
+
+      {/* Modificar estancia (ER-13) */}
+      <Modal
+        open={modifyOpen}
+        title="Modificar estancia"
+        onClose={() => setModifyOpen(false)}
+        size="md"
+      >
+        <form onSubmit={reviewModify} noValidate>
+          <p className="mb-3 text-sm text-slate-500">
+            Nuevo rango de fechas. El total se recalculará a partir del motor tarifario vigente.
+          </p>
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <Input
+              label="Nueva entrada"
+              name="newCheckIn"
+              type="date"
+              value={modifyForm.newCheckIn}
+              onChange={(e) => setModifyForm({ ...modifyForm, newCheckIn: e.target.value })}
+              required
+            />
+            <Input
+              label="Nueva salida"
+              name="newCheckOut"
+              type="date"
+              value={modifyForm.newCheckOut}
+              min={modifyForm.newCheckIn}
+              onChange={(e) => setModifyForm({ ...modifyForm, newCheckOut: e.target.value })}
+              required
+            />
+          </div>
+          <TextArea
+            label="Motivo"
+            name="modifyReason"
+            rows={2}
+            value={modifyForm.reason}
+            onChange={(e) => setModifyForm({ ...modifyForm, reason: e.target.value })}
+          />
+          <div className={FORM_ACTIONS}>
+            <button type="button" className={BTN_SECONDARY} onClick={() => setModifyOpen(false)}>
+              Cancelar
+            </button>
+            <button type="submit" className={BTN_PRIMARY}>
+              Recalcular y revisar
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!modifyPending}
+        title="Confirmar modificación de estancia"
+        message={
+          modifyPending
+            ? `Nuevo rango: ${formatDate(modifyPending.newCheckIn)} → ${formatDate(modifyPending.newCheckOut)}. El total se recalculará para las noches del nuevo rango. ¿Confirmar?`
+            : ''
+        }
+        confirmLabel="Sí, modificar"
+        loading={modifyStayMut.isPending}
+        onConfirm={applyModify}
+        onCancel={() => setModifyPending(null)}
+      />
+
+      {/* Cambiar habitación (ER-16) */}
+      <Modal
+        open={changeRoomOpen}
+        title="Cambiar habitación"
+        onClose={() => setChangeRoomOpen(false)}
+        size="md"
+      >
+        <form onSubmit={reviewChangeRoom} noValidate>
+          <p className="mb-3 text-sm text-slate-500">
+            Seleccione una habitación disponible del mismo tipo. La habitación actual pasará a limpieza.
+          </p>
+          <Select
+            label="Nueva habitación"
+            name="newRoomId"
+            value={changeRoomForm.newRoomId}
+            onChange={(e) => setChangeRoomForm({ ...changeRoomForm, newRoomId: e.target.value })}
+            required
+          >
+            <option value="">Seleccione…</option>
+            {(roomsQ.data?.content ?? [])
+              .filter(
+                (r) =>
+                  r.roomTypeId === reservation.roomTypeId &&
+                  r.status === 'AVAILABLE' &&
+                  !reservation.rooms.some((rr) => rr.roomId === r.id),
+              )
+              .map((r) => (
+                <option key={r.id} value={r.id}>
+                  Hab. {r.number} · piso {r.floor}
+                </option>
+              ))}
+          </Select>
+          <TextArea
+            label="Motivo"
+            name="changeRoomReason"
+            rows={2}
+            value={changeRoomForm.reason}
+            onChange={(e) => setChangeRoomForm({ ...changeRoomForm, reason: e.target.value })}
+          />
+          <div className={FORM_ACTIONS}>
+            <button type="button" className={BTN_SECONDARY} onClick={() => setChangeRoomOpen(false)}>
+              Cancelar
+            </button>
+            <button type="submit" className={BTN_PRIMARY}>Revisar cambio</button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!changeRoomPending}
+        title="Confirmar cambio de habitación"
+        message={
+          changeRoomPending
+            ? `¿Mover la reserva a la habitación #${changeRoomPending.newRoomId}? La habitación actual pasará a limpieza.`
+            : ''
+        }
+        confirmLabel="Sí, cambiar"
+        loading={changeRoomMut.isPending}
+        onConfirm={applyChangeRoom}
+        onCancel={() => setChangeRoomPending(null)}
+      />
+
+      {/* No-show (ER-11) */}
+      <Modal
+        open={noShowOpen}
+        title="Marcar como no-show"
+        onClose={() => setNoShowOpen(false)}
+        size="sm"
+      >
+        <form onSubmit={handleNoShow} noValidate>
+          <p className="mb-3 text-sm text-slate-500">
+            La reserva pasará a NO_SHOW y se liberará la habitación. Se aplicará la penalización de
+            no-show según la política asociada.
+          </p>
+          <TextArea
+            label="Motivo"
+            name="noShowReason"
+            rows={2}
+            value={noShowReason}
+            onChange={(e) => setNoShowReason(e.target.value)}
+          />
+          <div className={FORM_ACTIONS}>
+            <button type="button" className={BTN_SECONDARY} onClick={() => setNoShowOpen(false)}>
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-md border border-orange-600 bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+              disabled={noShowMut.isPending}
+            >
+              {noShowMut.isPending ? 'Marcando…' : 'Sí, marcar no-show'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

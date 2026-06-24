@@ -1,12 +1,16 @@
 package com.hotelmanager;
 
 import com.hotelmanager.domain.Guest;
+import com.hotelmanager.domain.Payment;
 import com.hotelmanager.domain.Reservation;
 import com.hotelmanager.domain.Room;
 import com.hotelmanager.domain.RoomType;
+import com.hotelmanager.domain.enums.PaymentMethod;
+import com.hotelmanager.domain.enums.PaymentStatus;
 import com.hotelmanager.domain.enums.ReservationStatus;
 import com.hotelmanager.domain.enums.RoomStatus;
 import com.hotelmanager.repository.GuestRepository;
+import com.hotelmanager.repository.PaymentRepository;
 import com.hotelmanager.repository.ReservationRepository;
 import com.hotelmanager.repository.RoomRepository;
 import com.hotelmanager.repository.RoomTypeRepository;
@@ -23,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -40,6 +45,8 @@ class CheckInOutServiceTest {
     private GuestRepository guestRepository;
     @Autowired
     private ReservationRepository reservationRepository;
+    @Autowired
+    private PaymentRepository paymentRepository;
 
     private RoomType doble;
     private Room room;
@@ -91,6 +98,15 @@ class CheckInOutServiceTest {
         LocalDate today = LocalDate.now();
         Long resId = createConfirmedWithRoom(today, today.plusDays(2));
         reservationService.checkIn(resId, null);
+
+        Reservation res = reservationRepository.findById(resId).orElseThrow();
+        Payment pay = new Payment();
+        pay.setReservation(res);
+        pay.setAmount(res.getTotalAmount());
+        pay.setMethod(PaymentMethod.CASH);
+        pay.setStatus(PaymentStatus.COMPLETED);
+        pay.setPaidAt(Instant.now());
+        paymentRepository.save(pay);
 
         ReservationDto dto = reservationService.checkOut(resId);
         assertEquals(ReservationStatus.CHECKED_OUT, dto.getStatus());

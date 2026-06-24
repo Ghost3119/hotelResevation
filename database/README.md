@@ -17,10 +17,17 @@ aplique automáticamente al arrancar:
 
 ```
 backend/src/main/resources/db/migration/
-├── V1__init_schema.sql             # esquema base completo
-├── V2__seed_data.sql               # datos semilla (EUR-like, pre-MXN)
-├── V3__refresh_tokens.sql          # tabla refresh_tokens + índices (auth)
-└── V4__adjust_seed_prices_mxn.sql  # ajusta importes semilla a MXN realista
+├── V1__init_schema.sql              # esquema base completo
+├── V2__seed_data.sql                # datos semilla (EUR-like, pre-MXN)
+├── V3__refresh_tokens.sql           # tabla refresh_tokens + índices (auth)
+├── V4__adjust_seed_prices_mxn.sql   # ajusta importes semilla a MXN realista
+├── V5__rate_engine.sql              # motor tarifario (rate_plans, seasonal_rates, ...)
+├── V6__reservation_evolution.sql    # snapshot nightly, adjustments, groups
+├── V7__policies_and_blocks.sql      # cancellation_policies, room_blocks (GiST)
+├── V8__housekeeping.sql             # housekeeping_status + housekeeping_tasks
+├── V9__privacy.sql                  # privacy_requests, access_logs, roles ampliados
+├── V10__room_stays.sql              # historial de ocupación por habitación
+└── V11__seed_rate_engine.sql        # semilla del motor tarifario + backfill reserva #1
 ```
 
 | Versión | Tipo    | Descripción                                                                          |
@@ -29,11 +36,20 @@ backend/src/main/resources/db/migration/
 | `V2`    | Datos   | Usuarios, tipos, habitaciones, huéspedes, reserva #1, pago #1, audit (pre-MXN).      |
 | `V3`    | Schema  | Tabla `refresh_tokens` (hash + jti + rotación + expiración) y sus cuatro índices.    |
 | `V4`    | Datos   | `UPDATE` de `room_types.base_price`, `reservations` #1, `payments` #1 y `audit_events` #2 a MXN realista. |
+| `V5`    | Schema  | Motor tarifario: `rate_plans`, `seasonal_rates` (GiST EXCLUDE), `daily_rate_overrides`, `promotion_rules`, `closed_dates`, `taxes_and_fees`. |
+| `V6`    | Schema  | `reservation_nightly_rates` (snapshot inmutable), `reservation_adjustments`, `reservation_groups`; añade `group_id` y `cancellation_policy_id` a `reservations`. |
+| `V7`    | Schema  | `cancellation_policies` + FKs a `rate_plans`/`reservations`; `room_blocks` (GiST EXCLUDE). |
+| `V8`    | Schema  | `rooms.housekeeping_status` + tabla `housekeeping_tasks`.                            |
+| `V9`    | Schema  | `privacy_requests`, `personal_data_access_logs`, `guests.do_not_contact`; amplía `users.role` con `HOUSEKEEPING`, `MANAGER`, `PRIVACY_OFFICER`. |
+| `V10`   | Schema  | `room_stays` (historial de ocupación por habitación, ER-16).                          |
+| `V11`   | Datos   | Semilla del motor tarifario: 4 políticas, 4 planes, 2 temporadas, IVA+ISH, overrides Nochevieja, promo `EARLYBIRD10`, backfill de `reservation_nightly_rates` para reserva #1. |
 
-> `schema.sql` refleja el estado de esquema tras `V1` + `V3` (V2 y V4 son solo
-> datos). `seed.sql` refleja el estado de datos tras `V2` + `V4` (importes ya en
-> MXN). Las migraciones ya aplicadas (`V1`, `V2`) **no se modifican**; los
-> ajustes posteriores van en nuevas versiones (`V3`, `V4`).
+> `schema.sql` refleja el estado de esquema tras `V1` + `V3` + `V5`..`V10`
+> (V2, V4 y V11 son solo datos). `seed.sql` refleja el estado de datos tras
+> `V2` + `V4` (importes MXN); la semilla del motor tarifario de `V11` aún no
+> está volcada en `database/seed.sql` (consultar `V11__seed_rate_engine.sql`).
+> Las migraciones ya aplicadas **no se modifican**; los ajustes posteriores van
+> en nuevas versiones.
 
 Flyway las descubre vía `spring.flyway.enabled=true`
 (ver `.env.example` / `compose.yaml`) y las aplica contra el datasource

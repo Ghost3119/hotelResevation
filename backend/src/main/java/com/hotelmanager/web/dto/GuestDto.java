@@ -19,5 +19,6 @@ public class GuestDto {
     private String phone;
     private String documentNumber;
     private String nationality;
+    private Boolean doNotContact;
     private Instant createdAt;
 }

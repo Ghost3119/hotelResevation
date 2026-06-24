@@ -15,8 +15,9 @@ test.beforeEach(async ({ page }) => {
 test.describe('Flujo completo de reserva', () => {
   test('crea reserva, registra pago, check-in y check-out', async ({ page }) => {
     // --- 1. Crea un huésped determinista (documento único) ---------------------
-    const doc = `E2E-${Date.now()}`
-    const firstName = 'E2e'
+    const stamp = Date.now()
+    const doc = `E2E-${stamp}`
+    const firstName = `E2e${stamp}`
     const lastName = 'Flujo'
 
     await page.goto('/guests')
@@ -38,8 +39,8 @@ test.describe('Flujo completo de reserva', () => {
     await page.goto('/reservations/new')
     await expect(page.getByRole('heading', { name: 'Nueva reserva' })).toBeVisible()
 
-    await page.getByLabel('Huésped').fill(doc)
-    await page.getByRole('button').filter({ hasText: doc }).first().click()
+    await page.getByLabel('Huésped').fill(firstName)
+    await page.getByRole('button').filter({ hasText: `${firstName} ${lastName}` }).first().click()
     await expect(page.getByText(/Seleccionado:/)).toBeVisible()
 
     await page.getByLabel('Entrada').fill(futureISO(0))

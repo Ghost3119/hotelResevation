@@ -3,11 +3,16 @@ package com.hotelmanager.web;
 import com.hotelmanager.domain.enums.ReservationStatus;
 import com.hotelmanager.service.ReservationService;
 import com.hotelmanager.web.dto.AssignRoomRequest;
+import com.hotelmanager.web.dto.ChangeRoomRequest;
 import com.hotelmanager.web.dto.CheckInRequest;
 import com.hotelmanager.web.dto.CheckOutRequest;
+import com.hotelmanager.web.dto.ModifyStayRequest;
+import com.hotelmanager.web.dto.NoShowRequest;
 import com.hotelmanager.web.dto.PageDto;
+import com.hotelmanager.web.dto.ReservationAdjustmentDto;
 import com.hotelmanager.web.dto.ReservationCreateRequest;
 import com.hotelmanager.web.dto.ReservationDto;
+import com.hotelmanager.web.dto.ReservationNightlyRateDto;
 import com.hotelmanager.web.dto.ReservationUpdateRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -29,12 +34,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.time.LocalDate;
+import java.util.List;
 
 @Tag(name = "Reservations")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/reservations")
-@PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER','RECEPCIONISTA')")
 public class ReservationController {
 
     private final ReservationService reservationService;
@@ -95,5 +101,39 @@ public class ReservationController {
     @PostMapping("/{id}/check-out")
     public ResponseEntity<ReservationDto> checkOut(@PathVariable Long id, @RequestBody(required = false) CheckOutRequest req) {
         return ResponseEntity.ok(reservationService.checkOut(id));
+    }
+
+    @Operation(summary = "Modify stay dates (extend/reduce/change check-in)")
+    @PutMapping("/{id}/modify-stay")
+    public ResponseEntity<ReservationDto> modifyStay(@PathVariable Long id,
+                                                     @Valid @RequestBody ModifyStayRequest req) {
+        return ResponseEntity.ok(reservationService.modifyStay(id, req));
+    }
+
+    @Operation(summary = "Mark reservation as no-show")
+    @PostMapping("/{id}/no-show")
+    public ResponseEntity<ReservationDto> noShow(@PathVariable Long id,
+                                                 @RequestBody(required = false) NoShowRequest req) {
+        String reason = req != null ? req.getReason() : null;
+        return ResponseEntity.ok(reservationService.noShow(id, reason));
+    }
+
+    @Operation(summary = "Change room for a checked-in reservation")
+    @PostMapping("/{id}/change-room")
+    public ResponseEntity<ReservationDto> changeRoom(@PathVariable Long id,
+                                                     @Valid @RequestBody ChangeRoomRequest req) {
+        return ResponseEntity.ok(reservationService.changeRoom(id, req.getNewRoomId(), req.getReason()));
+    }
+
+    @Operation(summary = "List nightly rate snapshots for a reservation")
+    @GetMapping("/{id}/nightly-rates")
+    public ResponseEntity<List<ReservationNightlyRateDto>> nightlyRates(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.listNightlyRates(id));
+    }
+
+    @Operation(summary = "List adjustments (audit) for a reservation")
+    @GetMapping("/{id}/adjustments")
+    public ResponseEntity<List<ReservationAdjustmentDto>> adjustments(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.listAdjustments(id));
     }
 }

@@ -34,14 +34,17 @@ public class RoomService {
     private final RoomTypeService roomTypeService;
     private final com.hotelmanager.config.AuditService auditService;
     private final com.hotelmanager.security.SecurityUtils securityUtils;
+    private final com.hotelmanager.repository.HousekeepingTaskRepository housekeepingTaskRepository;
 
     public RoomService(RoomRepository roomRepository, RoomTypeService roomTypeService,
                        com.hotelmanager.config.AuditService auditService,
-                       com.hotelmanager.security.SecurityUtils securityUtils) {
+                       com.hotelmanager.security.SecurityUtils securityUtils,
+                       com.hotelmanager.repository.HousekeepingTaskRepository housekeepingTaskRepository) {
         this.roomRepository = roomRepository;
         this.roomTypeService = roomTypeService;
         this.auditService = auditService;
         this.securityUtils = securityUtils;
+        this.housekeepingTaskRepository = housekeepingTaskRepository;
     }
 
     @Transactional(readOnly = true)
@@ -92,6 +95,16 @@ public class RoomService {
         RoomStatus current = room.getStatus();
         RoomStatus target = req.getStatus();
         validateTransition(current, target);
+        if (target == RoomStatus.AVAILABLE) {
+            var latest = housekeepingTaskRepository.findLatestForRoom(id);
+            if (latest.isPresent() && latest.get().getStatus() != com.hotelmanager.domain.enums.HousekeepingStatus.READY) {
+                throw new BusinessException(HttpStatus.CONFLICT, ErrorCode.HOUSEKEEPING_NOT_READY,
+                        "Room cannot be set to AVAILABLE until its latest housekeeping task is READY");
+            }
+            if (latest.isPresent()) {
+                room.setHousekeepingStatus(com.hotelmanager.domain.enums.HousekeepingStatus.READY.name());
+            }
+        }
         room.setStatus(target);
         if (req.getObservations() != null) {
             room.setObservations(req.getObservations());

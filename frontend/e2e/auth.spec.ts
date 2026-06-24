@@ -30,7 +30,7 @@ test.describe('Autenticación', () => {
     await expect(page.getByText('Salidas hoy')).toBeVisible()
     await expect(page.getByText('Habitaciones ocupadas')).toBeVisible()
     await expect(page.getByText('Habitaciones disponibles')).toBeVisible()
-    await expect(page.getByText('Ocupación')).toBeVisible()
+    await expect(page.getByText('Ocupación', { exact: true })).toBeVisible()
     await expect(page.getByText('Ingresos del periodo')).toBeVisible()
   })
 

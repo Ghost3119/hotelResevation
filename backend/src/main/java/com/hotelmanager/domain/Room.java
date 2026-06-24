@@ -50,6 +50,9 @@ public class Room {
     @Column(name = "observations")
     private String observations;
 
+    @Column(name = "housekeeping_status")
+    private String housekeepingStatus;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

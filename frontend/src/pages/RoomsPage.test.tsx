@@ -18,11 +18,12 @@ describe('RoomsPage', () => {
     expect(await screen.findByRole('heading', { name: 'Habitaciones' })).toBeInTheDocument()
 
     const select = await screen.findByLabelText('Tipo')
-    const options = within(select).getAllByRole('option')
-    const labels = options.map((o) => o.textContent ?? '')
-    expect(labels).toContain('Todos')
-    expect(labels).toContain('Doble')
-    expect(labels).toContain('Suite')
+    await waitFor(() => {
+      const labels = within(select).getAllByRole('option').map((o) => o.textContent ?? '')
+      expect(labels).toContain('Todos')
+      expect(labels).toContain('Doble')
+      expect(labels).toContain('Suite')
+    })
   })
 
   it('muestra los datos correctos en la tabla de habitaciones', async () => {

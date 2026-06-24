@@ -92,6 +92,12 @@ public class Reservation {
     @Column(name = "created_by")
     private Long createdBy;
 
+    @Column(name = "group_id")
+    private Long groupId;
+
+    @Column(name = "cancellation_policy_id")
+    private Long cancellationPolicyId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

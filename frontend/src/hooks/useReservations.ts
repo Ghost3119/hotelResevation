@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { reservationsClient as generatedReservationsClient } from '../api/generated/client'
 import {
   reservationsApi,
   type AssignRoomDto,
@@ -7,6 +8,7 @@ import {
   type ReservationListParams,
   type ReservationUpdateDto,
 } from '../api/reservations.api'
+import type { ChangeRoomDto, ModifyStayDto, NoShowDto } from '../api/generated/schema'
 
 export const reservationKeys = {
   all: ['reservations'] as const,
@@ -92,6 +94,46 @@ export function useCheckOut() {
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: reservationKeys.all })
       qc.setQueryData(reservationKeys.detail(res.id), res)
+    },
+  })
+}
+
+export function useModifyStay() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ModifyStayDto }) =>
+      generatedReservationsClient.modifyStay(id, data),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: reservationKeys.all })
+      qc.setQueryData(reservationKeys.detail(res.id), res)
+      qc.invalidateQueries({ queryKey: ['reservations', 'nightly-rates', res.id] })
+      qc.invalidateQueries({ queryKey: ['reservations', 'adjustments', res.id] })
+    },
+  })
+}
+
+export function useNoShow() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data?: NoShowDto }) =>
+      generatedReservationsClient.noShow(id, data ?? {}),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: reservationKeys.all })
+      qc.setQueryData(reservationKeys.detail(res.id), res)
+      qc.invalidateQueries({ queryKey: ['reservations', 'adjustments', res.id] })
+    },
+  })
+}
+
+export function useChangeRoom() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ChangeRoomDto }) =>
+      generatedReservationsClient.changeRoom(id, data),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: reservationKeys.all })
+      qc.setQueryData(reservationKeys.detail(res.id), res)
+      qc.invalidateQueries({ queryKey: ['reservations', 'adjustments', res.id] })
     },
   })
 }

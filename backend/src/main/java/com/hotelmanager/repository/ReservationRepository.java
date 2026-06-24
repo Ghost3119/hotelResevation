@@ -45,4 +45,14 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                                           @Param("statuses") List<ReservationStatus> statuses);
 
     List<Reservation> findTop5ByOrderByCreatedAtDesc();
+
+    @Query("""
+        select r from Reservation r
+        where r.status = :status
+          and r.checkIn < :day
+        """)
+    List<Reservation> findByStatusAndCheckInBefore(@Param("status") ReservationStatus status,
+                                                   @Param("day") LocalDate day);
+
+    List<Reservation> findByGroupId(Long groupId);
 }

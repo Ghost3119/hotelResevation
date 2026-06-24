@@ -1,8 +1,10 @@
 package com.hotelmanager.web;
 
 import com.hotelmanager.service.GuestService;
+import com.hotelmanager.service.PrivacyService;
 import com.hotelmanager.web.dto.GuestCreateRequest;
 import com.hotelmanager.web.dto.GuestDto;
+import com.hotelmanager.web.dto.GuestFullDto;
 import com.hotelmanager.web.dto.PageDto;
 import com.hotelmanager.web.dto.ReservationDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,13 +31,15 @@ import java.util.List;
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/guests")
-@PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
+@PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA','PRIVACY_OFFICER')")
 public class GuestController {
 
     private final GuestService guestService;
+    private final PrivacyService privacyService;
 
-    public GuestController(GuestService guestService) {
+    public GuestController(GuestService guestService, PrivacyService privacyService) {
         this.guestService = guestService;
+        this.privacyService = privacyService;
     }
 
     @Operation(summary = "Search guests (paginated)")
@@ -68,5 +72,13 @@ public class GuestController {
     @GetMapping("/{id}/reservations")
     public ResponseEntity<List<ReservationDto>> reservations(@PathVariable Long id) {
         return ResponseEntity.ok(guestService.reservationsByGuest(id));
+    }
+
+    @Operation(summary = "Get full (unmasked) guest data — PRIVACY_OFFICER only")
+    @GetMapping("/{id}/full")
+    @PreAuthorize("hasRole('PRIVACY_OFFICER')")
+    public ResponseEntity<GuestFullDto> getFull(@PathVariable Long id,
+                                                @RequestParam(name = "justification", required = false) String justification) {
+        return ResponseEntity.ok(privacyService.getGuestFull(id, justification));
     }
 }

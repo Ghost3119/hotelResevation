@@ -7,7 +7,8 @@ describe('GuestsPage', () => {
   it('lista huéspedes existentes', async () => {
     render(<App />, { route: '/guests', authenticated: true, role: 'ADMIN' })
     expect(await screen.findByText('John Doe')).toBeInTheDocument()
-    expect(screen.getByText('DNI456')).toBeInTheDocument()
+    // ER-24: document numbers are masked by default (first & last char kept).
+    expect(screen.getByText('D••••6')).toBeInTheDocument()
   })
 
   it('filtra huéspedes por búsqueda', async () => {

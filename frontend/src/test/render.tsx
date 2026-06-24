@@ -7,7 +7,7 @@ import { ToastProvider } from '../components/Toast'
 import { adminUser, recepUser, setMeUser } from './handlers'
 import { STORAGE_TOKEN_KEY } from '../utils/constants'
 import type { ReactElement, ReactNode } from 'react'
-import type { UserRole } from '../api/types'
+import type { UserDto, UserRole } from '../api/types'
 
 interface RenderOptions {
   route?: string
@@ -15,12 +15,20 @@ interface RenderOptions {
   authenticated?: boolean
 }
 
+const ROLE_USERS: Record<UserRole, UserDto> = {
+  ADMIN: adminUser,
+  RECEPCIONISTA: recepUser,
+  MANAGER: { id: 3, email: 'manager@hotel.test', fullName: 'Manager User', role: 'MANAGER', active: true },
+  HOUSEKEEPING: { id: 4, email: 'housekeeping@hotel.test', fullName: 'Housekeeping User', role: 'HOUSEKEEPING', active: true },
+  PRIVACY_OFFICER: { id: 5, email: 'privacy@hotel.test', fullName: 'Privacy Officer', role: 'PRIVACY_OFFICER', active: true },
+}
+
 export function render(ui: ReactElement, options: RenderOptions = {}) {
   const { route = '/', role = 'ADMIN', authenticated = false } = options
 
   if (authenticated) {
     window.localStorage.setItem(STORAGE_TOKEN_KEY, 'test-token')
-    setMeUser(role === 'ADMIN' ? adminUser : recepUser)
+    setMeUser(ROLE_USERS[role] ?? adminUser)
   } else {
     window.localStorage.removeItem(STORAGE_TOKEN_KEY)
     setMeUser(adminUser)

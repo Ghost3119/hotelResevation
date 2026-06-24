@@ -228,6 +228,17 @@ function guestName(id: number): string {
   return g ? `${g.firstName} ${g.lastName}` : '—'
 }
 
+/** ER-24: mask document_number by default (first & last char kept, rest `•`). */
+function maskDocument(value: string): string {
+  if (!value) return value
+  if (value.length <= 2) return value
+  return `${value[0]}${'•'.repeat(value.length - 2)}${value[value.length - 1]}`
+}
+
+function maskGuest(g: GuestDto): GuestDto {
+  return { ...g, documentNumber: maskDocument(g.documentNumber) }
+}
+
 function roomNumber(id: number): string {
   return allRooms.find((r) => r.id === id)?.number ?? String(id)
 }
@@ -268,13 +279,13 @@ export const handlers = [
             .includes(search)
         )
       : allGuests
-    return HttpResponse.json(paginate(filtered, page, size))
+    return HttpResponse.json(paginate(filtered.map(maskGuest), page, size))
   }),
   http.get(`${API}/guests/:id`, ({ params }) => {
     const id = Number(params.id)
     const g = allGuests.find((x) => x.id === id)
     if (!g) return errorResponse(404, 'RESOURCE_NOT_FOUND', 'Huésped no encontrado.')
-    return HttpResponse.json(g)
+    return HttpResponse.json(maskGuest(g))
   }),
   http.post(`${API}/guests`, async ({ request }) => {
     const body = (await request.json()) as Partial<GuestDto>
@@ -288,14 +299,14 @@ export const handlers = [
       nationality: body.nationality ?? '',
       createdAt: NOW,
     }
-    return HttpResponse.json(g, { status: 201 })
+    return HttpResponse.json(maskGuest(g), { status: 201 })
   }),
   http.put(`${API}/guests/:id`, async ({ params, request }) => {
     const id = Number(params.id)
     const g = allGuests.find((x) => x.id === id)
     if (!g) return errorResponse(404, 'RESOURCE_NOT_FOUND', 'Huésped no encontrado.')
     const body = (await request.json()) as Partial<GuestDto>
-    return HttpResponse.json({ ...g, ...body })
+    return HttpResponse.json(maskGuest({ ...g, ...body }))
   }),
   http.get(`${API}/guests/:id/reservations`, ({ params }) => {
     const id = Number(params.id)
@@ -408,7 +419,9 @@ export const handlers = [
     const id = ++store.reservationSeq
     const res: ReservationDto = {
       id,
-      status: 'CONFIRMED',
+      // ER-10/§3: reservations created WITHOUT a room start PENDING; a room
+      // assignment moves them to CONFIRMED.
+      status: body.roomId ? 'CONFIRMED' : 'PENDING',
       guestId: body.guestId,
       guestName: guestName(body.guestId),
       checkIn: body.checkIn,
@@ -522,5 +535,288 @@ export const handlers = [
       }
     }
     return errorResponse(404, 'RESOURCE_NOT_FOUND', 'Pago no encontrado.')
+  }),
+
+  // Quote (ER-8)
+  http.post(`${API}/availability/quote`, async ({ request }) => {
+    const body = (await request.json()) as {
+      checkIn: string
+      checkOut: string
+      roomTypeId: number
+      adults: number
+      children?: number
+    }
+    const nights =
+      Math.round((Date.parse(body.checkOut) - Date.parse(body.checkIn)) / 86400000) || 1
+    const rt = roomTypes.find((t) => t.id === body.roomTypeId)
+    const baseRate = rt?.basePrice ?? 0
+    const extra = Math.max(0, (body.adults ?? 1) - 1) * 20
+    const nightly = Array.from({ length: nights }).map((_, i) => ({
+      date: body.checkIn,
+      baseRate,
+      extraPersonCharge: extra,
+      discount: 0,
+      taxes: Number((baseRate * 0.16).toFixed(2)),
+      fees: 0,
+      total: Number((baseRate + extra + baseRate * 0.16).toFixed(2)),
+      _i: i,
+    })).map(({ _i, ...rest }) => rest)
+    const subtotal = nightly.reduce((s, n) => s + n.total, 0)
+    const totalTaxes = nightly.reduce((s, n) => s + n.taxes, 0)
+    return HttpResponse.json({
+      nightly,
+      subtotal: Number(subtotal.toFixed(2)),
+      totalDiscount: 0,
+      totalTaxes: Number(totalTaxes.toFixed(2)),
+      totalFees: 0,
+      grandTotal: Number(subtotal.toFixed(2)),
+      ratePlanId: null,
+    })
+  }),
+
+  // Reservation evolutions (ER-13/ER-15/ER-9)
+  http.put(`${API}/reservations/:id/modify-stay`, async ({ params, request }) => {
+    const id = Number(params.id)
+    const r = store.reservations[id]
+    if (!r) return errorResponse(404, 'RESOURCE_NOT_FOUND', 'Reserva no encontrada.')
+    const body = (await request.json()) as { newCheckIn: string; newCheckOut: string; reason?: string }
+    r.checkIn = body.newCheckIn
+    r.checkOut = body.newCheckOut
+    r.nights = Math.round((Date.parse(body.newCheckOut) - Date.parse(body.newCheckIn)) / 86400000)
+    r.totalAmount = Number((r.nightlyPrice * r.nights).toFixed(2))
+    r.balance = Number((r.totalAmount - r.paidAmount).toFixed(2))
+    return HttpResponse.json(r)
+  }),
+  http.post(`${API}/reservations/:id/no-show`, ({ params }) => {
+    const id = Number(params.id)
+    const r = store.reservations[id]
+    if (!r) return errorResponse(404, 'RESOURCE_NOT_FOUND', 'Reserva no encontrada.')
+    r.status = 'NO_SHOW'
+    r.rooms = []
+    return HttpResponse.json(r)
+  }),
+  http.post(`${API}/reservations/:id/change-room`, async ({ params, request }) => {
+    const id = Number(params.id)
+    const r = store.reservations[id]
+    if (!r) return errorResponse(404, 'RESOURCE_NOT_FOUND', 'Reserva no encontrada.')
+    const body = (await request.json()) as { newRoomId: number; reason?: string }
+    r.rooms = [
+      { roomId: body.newRoomId, roomNumber: roomNumber(body.newRoomId), checkIn: r.checkIn, checkOut: r.checkOut },
+    ]
+    return HttpResponse.json(r)
+  }),
+  http.get(`${API}/reservations/:id/nightly-rates`, ({ params }) => {
+    const id = Number(params.id)
+    const r = store.reservations[id]
+    if (!r) return errorResponse(404, 'RESOURCE_NOT_FOUND', 'Reserva no encontrada.')
+    const nightly = Array.from({ length: r.nights }).map((_, i) => ({
+      id: id * 1000 + i,
+      reservationId: id,
+      ratePlanId: null,
+      nightDate: r.checkIn,
+      baseRate: r.nightlyPrice,
+      extraPersonCharge: 0,
+      discountAmount: 0,
+      taxesAmount: 0,
+      feesAmount: 0,
+      total: r.nightlyPrice,
+      included: true,
+    }))
+    return HttpResponse.json(nightly)
+  }),
+  http.get(`${API}/reservations/:id/adjustments`, () => HttpResponse.json([])),
+
+  // Reservation groups (ER-14)
+  http.get(`${API}/reservation-groups`, () =>
+    HttpResponse.json({
+      content: [],
+      page: 0,
+      size: 20,
+      totalElements: 0,
+      totalPages: 1,
+    }),
+  ),
+  http.post(`${API}/reservation-groups`, async ({ request }) => {
+    const body = (await request.json()) as { name: string; contactGuestId?: number; notes?: string }
+    return HttpResponse.json(
+      { id: 1, name: body.name, contactGuestId: body.contactGuestId ?? null, notes: body.notes ?? null, createdBy: 1, createdAt: NOW },
+      { status: 201 },
+    )
+  }),
+  http.get(`${API}/reservation-groups/:id`, ({ params }) => {
+    const id = Number(params.id)
+    return HttpResponse.json({ id, name: 'Group', contactGuestId: null, notes: null, createdBy: 1, createdAt: NOW })
+  }),
+  http.post(`${API}/reservation-groups/:id/cancel`, () => HttpResponse.json({ cancelledCount: 0 })),
+
+  // Room blocks (ER-17)
+  http.get(`${API}/room-blocks`, () =>
+    HttpResponse.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 1 }),
+  ),
+  http.post(`${API}/room-blocks`, async ({ request }) => {
+    const body = (await request.json()) as { roomId: number; startDate: string; endDate: string; blockType: string; reason?: string }
+    return HttpResponse.json(
+      { id: 1, roomId: body.roomId, startDate: body.startDate, endDate: body.endDate, blockType: body.blockType, reason: body.reason ?? null, createdBy: 1, createdAt: NOW, releasedAt: null },
+      { status: 201 },
+    )
+  }),
+  http.put(`${API}/room-blocks/:id`, async ({ params, request }) => {
+    const id = Number(params.id)
+    const body = (await request.json()) as { roomId: number; startDate: string; endDate: string; blockType: string; reason?: string }
+    return HttpResponse.json({ id, ...body, createdBy: 1, createdAt: NOW, releasedAt: null })
+  }),
+  http.post(`${API}/room-blocks/:id/release`, ({ params }) => {
+    const id = Number(params.id)
+    return HttpResponse.json({ id, roomId: 1, startDate: '2026-07-01', endDate: '2026-07-05', blockType: 'MAINTENANCE', reason: null, createdBy: 1, createdAt: NOW, releasedAt: NOW })
+  }),
+
+  // Housekeeping tasks (ER-18)
+  http.get(`${API}/housekeeping-tasks`, () => HttpResponse.json([])),
+  http.post(`${API}/housekeeping-tasks`, async ({ request }) => {
+    const body = (await request.json()) as { roomId: number; priority?: string; notes?: string }
+    return HttpResponse.json(
+      { id: 1, roomId: body.roomId, roomNumber: roomNumber(body.roomId), status: 'DIRTY', priority: body.priority ?? 'NORMAL', assignedTo: null, notes: body.notes ?? null, createdAt: NOW, updatedAt: NOW, completedAt: null, createdBy: 1 },
+      { status: 201 },
+    )
+  }),
+  http.patch(`${API}/housekeeping-tasks/:id/status`, async ({ params, request }) => {
+    const id = Number(params.id)
+    const body = (await request.json()) as { status: string; notes?: string }
+    return HttpResponse.json({ id, roomId: 1, roomNumber: '101', status: body.status, priority: 'NORMAL', assignedTo: null, notes: body.notes ?? null, createdAt: NOW, updatedAt: NOW, completedAt: body.status === 'READY' ? NOW : null, createdBy: 1 })
+  }),
+
+  // Rate plans (ER-1)
+  http.get(`${API}/rate-plans`, () =>
+    HttpResponse.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 1 }),
+  ),
+  http.post(`${API}/rate-plans`, async ({ request }) => {
+    const body = (await request.json()) as { code: string; name: string; roomTypeId: number; weekdayRates: number[] }
+    return HttpResponse.json(
+      { id: 1, code: body.code, name: body.name, roomTypeId: body.roomTypeId, weekdayRates: body.weekdayRates, adultExtraRate: 0, childExtraRate: 0, cancellationPolicyId: null, minNights: 1, maxNights: null, isDefault: false, active: true, validFrom: '2026-01-01', validTo: null },
+      { status: 201 },
+    )
+  }),
+  http.get(`${API}/rate-plans/:id`, ({ params }) => {
+    const id = Number(params.id)
+    return HttpResponse.json({ id, code: 'STD', name: 'Standard', roomTypeId: 1, weekdayRates: [120, 120, 120, 120, 140, 160, 140], adultExtraRate: 20, childExtraRate: 10, cancellationPolicyId: null, minNights: 1, maxNights: null, isDefault: true, active: true, validFrom: '2026-01-01', validTo: null })
+  }),
+  http.put(`${API}/rate-plans/:id`, async ({ params, request }) => {
+    const id = Number(params.id)
+    const body = (await request.json()) as { code: string; name: string; roomTypeId: number; weekdayRates: number[] }
+    return HttpResponse.json({ id, ...body, adultExtraRate: 0, childExtraRate: 0, cancellationPolicyId: null, minNights: 1, maxNights: null, isDefault: false, active: true, validFrom: '2026-01-01', validTo: null })
+  }),
+  http.patch(`${API}/rate-plans/:id/status`, async ({ params, request }) => {
+    const id = Number(params.id)
+    const body = (await request.json()) as { active: boolean }
+    return HttpResponse.json({ id, code: 'STD', name: 'Standard', roomTypeId: 1, weekdayRates: [120], adultExtraRate: 0, childExtraRate: 0, cancellationPolicyId: null, minNights: 1, maxNights: null, isDefault: false, active: body.active, validFrom: '2026-01-01', validTo: null })
+  }),
+
+  // Seasonal rates (ER-2)
+  http.get(`${API}/seasonal-rates`, () =>
+    HttpResponse.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 1 }),
+  ),
+  http.post(`${API}/seasonal-rates`, async ({ request }) => {
+    const body = (await request.json()) as { ratePlanId: number; name: string; startDate: string; endDate: string; seasonType: string; priceMode: string; weekdays: number[] }
+    return HttpResponse.json({ id: 1, ...body }, { status: 201 })
+  }),
+  http.put(`${API}/seasonal-rates/:id`, async ({ params, request }) => {
+    const id = Number(params.id)
+    const body = (await request.json()) as { ratePlanId: number; name: string; startDate: string; endDate: string; seasonType: string; priceMode: string; weekdays: number[] }
+    return HttpResponse.json({ id, ...body })
+  }),
+  http.delete(`${API}/seasonal-rates/:id`, () => new HttpResponse(null, { status: 204 })),
+
+  // Daily rate overrides (ER-3)
+  http.get(`${API}/daily-rate-overrides`, () =>
+    HttpResponse.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 1 }),
+  ),
+  http.post(`${API}/daily-rate-overrides`, async ({ request }) => {
+    const body = (await request.json()) as { roomTypeId: number; ratePlanId?: number | null; date: string; price: number; reason?: string }
+    return HttpResponse.json({ id: 1, ...body }, { status: 201 })
+  }),
+  http.put(`${API}/daily-rate-overrides/:id`, async ({ params, request }) => {
+    const id = Number(params.id)
+    const body = (await request.json()) as { roomTypeId: number; ratePlanId?: number | null; date: string; price: number; reason?: string }
+    return HttpResponse.json({ id, ...body })
+  }),
+  http.delete(`${API}/daily-rate-overrides/:id`, () => new HttpResponse(null, { status: 204 })),
+
+  // Promotions (ER-4)
+  http.get(`${API}/promotion-rules`, () =>
+    HttpResponse.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 1 }),
+  ),
+  http.post(`${API}/promotion-rules`, async ({ request }) => {
+    const body = (await request.json()) as { code: string; discountType: string; discountValue: number; validFrom: string }
+    return HttpResponse.json({ id: 1, code: body.code, description: null, discountType: body.discountType, discountValue: body.discountValue, minNights: 1, minGuests: 1, validFrom: body.validFrom, validTo: null, ratePlanId: null, stackable: false, priority: 0, active: true }, { status: 201 })
+  }),
+  http.put(`${API}/promotion-rules/:id`, async ({ params, request }) => {
+    const id = Number(params.id)
+    const body = (await request.json()) as { code: string; discountType: string; discountValue: number; validFrom: string }
+    return HttpResponse.json({ id, code: body.code, description: null, discountType: body.discountType, discountValue: body.discountValue, minNights: 1, minGuests: 1, validFrom: body.validFrom, validTo: null, ratePlanId: null, stackable: false, priority: 0, active: true })
+  }),
+
+  // Taxes & fees (ER-5)
+  http.get(`${API}/taxes-and-fees`, () =>
+    HttpResponse.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 1 }),
+  ),
+  http.post(`${API}/taxes-and-fees`, async ({ request }) => {
+    const body = (await request.json()) as { name: string; type: string; value: number; appliesTo: string; validFrom: string }
+    return HttpResponse.json({ id: 1, ...body, validTo: null, active: true }, { status: 201 })
+  }),
+  http.put(`${API}/taxes-and-fees/:id`, async ({ params, request }) => {
+    const id = Number(params.id)
+    const body = (await request.json()) as { name: string; type: string; value: number; appliesTo: string; validFrom: string }
+    return HttpResponse.json({ id, ...body, validTo: null, active: true })
+  }),
+
+  // Cancellation policies (ER-10)
+  http.get(`${API}/cancellation-policies`, () => HttpResponse.json([])),
+  http.post(`${API}/cancellation-policies`, async ({ request }) => {
+    const body = (await request.json()) as { name: string; deadlineHours: number; penaltyType: string }
+    return HttpResponse.json({ id: 1, name: body.name, deadlineHours: body.deadlineHours, penaltyType: body.penaltyType, penaltyValue: 0, noShowPenaltyType: body.penaltyType, noShowPenaltyValue: 0, active: true }, { status: 201 })
+  }),
+  http.put(`${API}/cancellation-policies/:id`, async ({ params, request }) => {
+    const id = Number(params.id)
+    const body = (await request.json()) as { name: string; deadlineHours: number; penaltyType: string }
+    return HttpResponse.json({ id, name: body.name, deadlineHours: body.deadlineHours, penaltyType: body.penaltyType, penaltyValue: 0, noShowPenaltyType: body.penaltyType, noShowPenaltyValue: 0, active: true })
+  }),
+
+  // Privacy (ER-26/ER-25)
+  http.get(`${API}/privacy-requests`, () =>
+    HttpResponse.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 1 }),
+  ),
+  http.post(`${API}/privacy-requests`, async ({ request }) => {
+    const body = (await request.json()) as { guestId: number; type: string; notes?: string }
+    return HttpResponse.json({ id: 1, guestId: body.guestId, type: body.type, status: 'PENDING', requestedAt: NOW, completedAt: null, handledBy: null, notes: body.notes ?? null }, { status: 201 })
+  }),
+  http.get(`${API}/privacy-requests/:id`, ({ params }) => {
+    const id = Number(params.id)
+    return HttpResponse.json({ id, guestId: 1, type: 'EXPORT', status: 'PENDING', requestedAt: NOW, completedAt: null, handledBy: null, notes: null })
+  }),
+  http.put(`${API}/privacy-requests/:id`, async ({ params, request }) => {
+    const id = Number(params.id)
+    const body = (await request.json()) as { status?: string; notes?: string }
+    return HttpResponse.json({ id, guestId: 1, type: 'EXPORT', status: body.status ?? 'IN_PROGRESS', requestedAt: NOW, completedAt: null, handledBy: 1, notes: body.notes ?? null })
+  }),
+  http.post(`${API}/privacy-requests/:id/export`, () => {
+    return HttpResponse.json({ guest: { id: 1, firstName: 'John', lastName: 'Doe', email: 'john@test.com', phone: '555-0100', documentNumber: 'PASS123', nationality: 'USA', doNotContact: false, createdAt: NOW }, reservations: [], payments: [] })
+  }),
+  http.post(`${API}/privacy-requests/:id/anonymize`, ({ params }) => {
+    const id = Number(params.id)
+    return HttpResponse.json({ id, guestId: 1, type: 'DELETE', status: 'COMPLETED', requestedAt: NOW, completedAt: NOW, handledBy: 1, notes: 'Anonimizado' })
+  }),
+  http.get(`${API}/personal-data-access-logs`, () =>
+    HttpResponse.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 1 }),
+  ),
+
+  // Admin (ER-12)
+  http.post(`${API}/admin/mark-no-shows`, () => HttpResponse.json({ markedCount: 0 })),
+
+  // Guests full (unmasked, PRIVACY_OFFICER) — ER-24
+  http.get(`${API}/guests/:id/full`, ({ params }) => {
+    const id = Number(params.id)
+    const g = allGuests.find((x) => x.id === id)
+    if (!g) return errorResponse(404, 'RESOURCE_NOT_FOUND', 'Huésped no encontrado.')
+    return HttpResponse.json({ ...g, doNotContact: false, createdAt: NOW })
   }),
 ]

@@ -1,4 +1,9 @@
-export type UserRole = 'ADMIN' | 'RECEPCIONISTA'
+export type UserRole =
+  | 'ADMIN'
+  | 'RECEPCIONISTA'
+  | 'HOUSEKEEPING'
+  | 'MANAGER'
+  | 'PRIVACY_OFFICER'
 
 export type RoomStatus =
   | 'AVAILABLE'
@@ -181,3 +186,60 @@ export interface NormalizedError {
   status?: number
   fieldErrors: FieldError[]
 }
+
+/**
+ * Evolved-domain DTOs (ER-1..ER-30). These are re-exported from the generated
+ * OpenAPI schema so the frontend and the generated client share a single source
+ * of truth. See `docs/hotel-rules.md` and `src/api/generated/schema.ts`.
+ */
+export type {
+  RatePlanDto,
+  RatePlanCreateDto,
+  RatePlanStatusDto,
+  SeasonalRateDto,
+  SeasonalRateCreateDto,
+  DailyRateOverrideDto,
+  DailyRateOverrideCreateDto,
+  PromotionRuleDto,
+  PromotionRuleCreateDto,
+  TaxOrFeeDto,
+  TaxOrFeeCreateDto,
+  CancellationPolicyDto,
+  CancellationPolicyCreateDto,
+  QuoteRequest,
+  QuoteResultDto,
+  QuoteNightlyRateDto,
+  ReservationNightlyRateDto,
+  ReservationAdjustmentDto,
+  ReservationGroupDto,
+  ReservationGroupCreateDto,
+  RoomBlockDto,
+  RoomBlockCreateDto,
+  HousekeepingTaskDto,
+  HousekeepingTaskCreateDto,
+  HousekeepingStatusUpdateDto,
+  PrivacyRequestDto,
+  PrivacyRequestCreateDto,
+  PrivacyRequestUpdateDto,
+  PersonalDataAccessLogDto,
+  GuestFullDto,
+  GuestFullExportDto,
+  GuestWriteDto as GuestWriteSchemaDto,
+  ModifyStayDto,
+  NoShowDto,
+  ChangeRoomDto,
+} from './generated/schema'
+
+export type HousekeepingStatus = import('./generated/schema').HousekeepingStatus
+export type HousekeepingPriority = import('./generated/schema').HousekeepingPriority
+export type SeasonType = import('./generated/schema').SeasonType
+export type PriceMode = import('./generated/schema').PriceMode
+export type TaxType = import('./generated/schema').TaxType
+export type TaxAppliesTo = import('./generated/schema').TaxAppliesTo
+export type DiscountType = import('./generated/schema').DiscountType
+export type PenaltyType = import('./generated/schema').PenaltyType
+export type BlockType = import('./generated/schema').BlockType
+export type AdjustmentType = import('./generated/schema').AdjustmentType
+export type PrivacyRequestType = import('./generated/schema').PrivacyRequestType
+export type PrivacyRequestStatus = import('./generated/schema').PrivacyRequestStatus
+export type DataAccessAction = import('./generated/schema').DataAccessAction

@@ -35,6 +35,10 @@ public class ReservationCreateRequest {
 
     private Long roomId;
 
+    private Long ratePlanId;
+
+    private String promotionCode;
+
     private String notes;
 
     private String specialRequests;

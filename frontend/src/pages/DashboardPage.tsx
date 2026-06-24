@@ -111,7 +111,7 @@ export function DashboardPage() {
 
           <div className={CARD}>
             <div className={CARD_HEADER}>
-              <h3 className="text-base font-semibold text-slate-900">Reservas recientes</h3>
+              <h2 className="text-base font-semibold text-slate-900">Reservas recientes</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">

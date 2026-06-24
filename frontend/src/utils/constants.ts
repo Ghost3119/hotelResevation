@@ -1,8 +1,20 @@
 import type {
+  AdjustmentType,
+  BlockType,
+  DiscountType,
+  HousekeepingPriority,
+  HousekeepingStatus,
   PaymentMethod,
   PaymentStatus,
+  PenaltyType,
+  PriceMode,
+  PrivacyRequestStatus,
+  PrivacyRequestType,
   ReservationStatus,
   RoomStatus,
+  SeasonType,
+  TaxAppliesTo,
+  TaxType,
   UserRole,
 } from '../api/types'
 
@@ -19,6 +31,16 @@ export const ROUTES = {
   ROOM_TYPES: '/room-types',
   USERS: '/users',
   PAYMENTS: '/payments',
+  QUOTE: '/quote',
+  RATE_PLANS: '/rate-plans',
+  SEASONAL_RATES: '/seasonal-rates',
+  TAXES_AND_FEES: '/taxes-and-fees',
+  CANCELLATION_POLICIES: '/cancellation-policies',
+  ROOM_BLOCKS: '/room-blocks',
+  RESERVATION_GROUPS: '/reservation-groups',
+  HOUSEKEEPING: '/housekeeping',
+  OCCUPANCY_CALENDAR: '/occupancy-calendar',
+  PRIVACY_REQUESTS: '/privacy-requests',
   FORBIDDEN: '/403',
 } as const
 
@@ -84,6 +106,9 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 export const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: 'Administrador',
   RECEPCIONISTA: 'Recepcionista',
+  MANAGER: 'Gerente',
+  HOUSEKEEPING: 'Limpieza',
+  PRIVACY_OFFICER: 'Oficial de privacidad',
 }
 
 export const ROOM_STATUSES: RoomStatus[] = [
@@ -162,3 +187,137 @@ export const TABLE_TH =
 export const TABLE_TD = 'border-b border-slate-200 px-3 py-2.5 align-middle text-slate-900'
 export const TABLE_EMPTY_TD = 'px-3 py-7 text-center text-slate-500'
 export const ROW_CLICKABLE = 'cursor-pointer hover:bg-slate-50'
+
+/* ---------- Evolved domain labels (ER-1..ER-30) ---------- */
+
+export const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] as const
+
+export const HOUSEKEEPING_STATUSES: HousekeepingStatus[] = [
+  'DIRTY',
+  'CLEANING',
+  'INSPECTED',
+  'READY',
+]
+
+export const HOUSEKEEPING_STATUS_LABELS: Record<HousekeepingStatus, string> = {
+  DIRTY: 'Sucio',
+  CLEANING: 'Limpiando',
+  INSPECTED: 'Inspeccionado',
+  READY: 'Listo',
+}
+
+export const HOUSEKEEPING_STATUS_BADGE: Record<HousekeepingStatus, string> = {
+  DIRTY: 'bg-red-100 text-red-800',
+  CLEANING: 'bg-yellow-100 text-yellow-800',
+  INSPECTED: 'bg-blue-100 text-blue-800',
+  READY: 'bg-green-100 text-green-800',
+}
+
+export const HOUSEKEEPING_PRIORITIES: HousekeepingPriority[] = [
+  'LOW',
+  'NORMAL',
+  'HIGH',
+  'URGENT',
+]
+
+export const HOUSEKEEPING_PRIORITY_LABELS: Record<HousekeepingPriority, string> = {
+  LOW: 'Baja',
+  NORMAL: 'Normal',
+  HIGH: 'Alta',
+  URGENT: 'Urgente',
+}
+
+export const HOUSEKEEPING_PRIORITY_BADGE: Record<HousekeepingPriority, string> = {
+  LOW: 'bg-gray-100 text-gray-700',
+  NORMAL: 'bg-slate-200 text-slate-700',
+  HIGH: 'bg-orange-100 text-orange-800',
+  URGENT: 'bg-red-100 text-red-800',
+}
+
+export const SEASON_TYPES: SeasonType[] = ['ALTA', 'MEDIA', 'BAJA']
+export const SEASON_TYPE_LABELS: Record<SeasonType, string> = {
+  ALTA: 'Alta',
+  MEDIA: 'Media',
+  BAJA: 'Baja',
+}
+
+export const PRICE_MODES: PriceMode[] = ['MULTIPLIER', 'ABSOLUTE']
+export const PRICE_MODE_LABELS: Record<PriceMode, string> = {
+  MULTIPLIER: 'Multiplicador',
+  ABSOLUTE: 'Precio absoluto',
+}
+
+export const TAX_TYPES: TaxType[] = ['TAX_PERCENT', 'FEE_FIXED']
+export const TAX_TYPE_LABELS: Record<TaxType, string> = {
+  TAX_PERCENT: 'Impuesto (%)',
+  FEE_FIXED: 'Cargo fijo',
+}
+
+export const TAX_APPLIES_TO: TaxAppliesTo[] = ['ROOM_RATE', 'TOTAL', 'PER_NIGHT']
+export const TAX_APPLIES_TO_LABELS: Record<TaxAppliesTo, string> = {
+  ROOM_RATE: 'Tarifa de habitación',
+  TOTAL: 'Total',
+  PER_NIGHT: 'Por noche',
+}
+
+export const DISCOUNT_TYPES: DiscountType[] = ['PERCENTAGE', 'FIXED']
+export const DISCOUNT_TYPE_LABELS: Record<DiscountType, string> = {
+  PERCENTAGE: 'Porcentaje',
+  FIXED: 'Importe fijo',
+}
+
+export const PENALTY_TYPES: PenaltyType[] = ['NONE', 'PERCENTAGE', 'FIXED', 'FIRST_NIGHT']
+export const PENALTY_TYPE_LABELS: Record<PenaltyType, string> = {
+  NONE: 'Sin penalización',
+  PERCENTAGE: 'Porcentaje',
+  FIXED: 'Importe fijo',
+  FIRST_NIGHT: 'Primera noche',
+}
+
+export const BLOCK_TYPES: BlockType[] = ['MAINTENANCE', 'OPERATIONAL']
+export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
+  MAINTENANCE: 'Mantenimiento',
+  OPERATIONAL: 'Operativo',
+}
+
+export const ADJUSTMENT_TYPE_LABELS: Record<AdjustmentType, string> = {
+  EXTEND: 'Extensión',
+  REDUCE: 'Reducción',
+  CHANGE_DATES: 'Cambio de fechas',
+  CHANGE_ROOM: 'Cambio de habitación',
+  CANCEL: 'Cancelación',
+  NO_SHOW: 'No-show',
+  PENALTY: 'Penalización',
+}
+
+export const PRIVACY_REQUEST_TYPES: PrivacyRequestType[] = ['EXPORT', 'RECTIFY', 'DELETE']
+export const PRIVACY_REQUEST_TYPE_LABELS: Record<PrivacyRequestType, string> = {
+  EXPORT: 'Exportación',
+  RECTIFY: 'Rectificación',
+  DELETE: 'Eliminación',
+}
+
+export const PRIVACY_REQUEST_STATUSES: PrivacyRequestStatus[] = [
+  'PENDING',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'REJECTED',
+]
+export const PRIVACY_REQUEST_STATUS_LABELS: Record<PrivacyRequestStatus, string> = {
+  PENDING: 'Pendiente',
+  IN_PROGRESS: 'En curso',
+  COMPLETED: 'Completada',
+  REJECTED: 'Rechazada',
+}
+export const PRIVACY_REQUEST_STATUS_BADGE: Record<PrivacyRequestStatus, string> = {
+  PENDING: 'bg-gray-200 text-gray-800',
+  IN_PROGRESS: 'bg-blue-100 text-blue-800',
+  COMPLETED: 'bg-green-100 text-green-800',
+  REJECTED: 'bg-red-100 text-red-800',
+}
+
+export const ROLE_GROUPS = {
+  CONFIG: ['ADMIN', 'MANAGER'] as UserRole[],
+  OPERATION_HOUSEKEEPING: ['ADMIN', 'MANAGER', 'HOUSEKEEPING'] as UserRole[],
+  PRIVACY: ['PRIVACY_OFFICER'] as UserRole[],
+} as const

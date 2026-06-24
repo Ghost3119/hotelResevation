@@ -35,6 +35,8 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
 
     long countByStatus(RoomStatus status);
 
+    long countByHousekeepingStatus(String housekeepingStatus);
+
     @Query("""
         select r from Room r
         where r.roomType.active = true
@@ -46,6 +48,12 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
             where rr.reservation.status not in :excludedReservationStatuses
               and rr.checkIn < :checkOut
               and :checkIn < rr.checkOut
+          )
+          and r.id not in (
+            select b.room.id from RoomBlock b
+            where b.releasedAt is null
+              and b.startDate < :checkOut
+              and :checkIn < b.endDate
           )
         order by r.floor asc, r.number asc
         """)

@@ -2,5 +2,8 @@ package com.hotelmanager.domain.enums;
 
 public enum UserRole {
     ADMIN,
-    RECEPCIONISTA
+    RECEPCIONISTA,
+    HOUSEKEEPING,
+    MANAGER,
+    PRIVACY_OFFICER
 }
