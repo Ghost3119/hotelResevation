@@ -9,7 +9,7 @@ import type {
   UserDto,
 } from '../api/types'
 
-export const API = 'http://localhost:8080/api'
+export const API = '/api'
 
 export const adminUser: UserDto = {
   id: 1,

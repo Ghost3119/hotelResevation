@@ -23,6 +23,7 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
 
 app:
   jwt:
@@ -36,6 +37,13 @@ app:
     cookie-path: /api/auth
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  security:
+    expose-docs: ${APP_SECURITY_EXPOSE_DOCS:true}
+    expose-h2-console: ${APP_SECURITY_EXPOSE_H2_CONSOLE:false}
+    auth-rate-limit:
+      enabled: ${AUTH_RATE_LIMIT_ENABLED:true}
+      max-attempts: ${AUTH_RATE_LIMIT_MAX_ATTEMPTS:30}
+      window-seconds: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:60}
 
 springdoc:
   api-docs:
