@@ -1,182 +1,209 @@
 # Hotel Manager
 
-Sistema de gestión hotelera (PMS) para uso interno de recepción y
-administración. Aplicación web fullstack con backend en Spring Boot, frontend en
-React + TypeScript y base de datos PostgreSQL.
+Sistema web de administracion hotelera (PMS) para recepcion, administracion,
+operacion y privacidad. El proyecto esta construido como una aplicacion
+fullstack con Spring Boot 3, React 18 + TypeScript, PostgreSQL 16 y Docker
+Compose.
 
-> No es una landing page publicitaria: es una herramienta operativa para el
+Tambien incluye controles y evidencias para una defensa Blue Team de la materia
+de ciberseguridad: hardening HTTP, CORS para ngrok, auditoria de accesos,
+registro de intentos de ataque, scripts SAST/DAST y pruebas automatizadas.
+
+> La aplicacion no es una landing page. Es una herramienta operativa para el
 > personal del hotel.
 
 ---
 
 ## Resumen
 
-Aplicación de administración hotelera con dos roles:
+Funcionalidades principales:
 
-- **ADMIN**: administra usuarios, habitaciones y tipos de habitación, configura
-  precios, consulta reportes y ocupación, y accede a todas las reservas.
-- **RECEPCIONISTA**: registra huéspedes, crea y modifica reservas, realiza
-  check-in y check-out, registra pagos y consulta disponibilidad.
-
-Funcionalidades implementadas (MVP):
-
-1. Autenticación con JWT y autorización por roles (BCrypt para contraseñas).
-2. Huéspedes: registro, edición, consulta, búsqueda y historial de reservas.
-3. Tipos de habitación: CRUD con capacidad, precio base y servicios.
-4. Habitaciones: CRUD con estados (AVAILABLE, RESERVED, OCCUPIED, CLEANING,
-   MAINTENANCE, OUT_OF_SERVICE), cambio de estado y observaciones.
-5. Reservas: creación con asignación de habitación, prevención de solapamientos,
-   estados (PENDING, CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED, NO_SHOW),
-   cálculo de noches y precio total, cancelación con reglas de negocio.
-6. Disponibilidad: búsqueda por fechas, huéspedes y tipo de habitación.
-7. Check-in / check-out con control de estados y registro de usuario y fecha.
-8. Pagos manuales con métodos y estados, cálculo de total/pagado/saldo.
-9. Dashboard con KPIs del día y periodo (llegadas, salidas, ocupación, ingresos).
-10. Frontend operativo responsive con navegación lateral y rutas protegidas.
+1. Autenticacion con JWT, refresh token en cookie HttpOnly, rotacion de refresh
+   tokens, deteccion de reutilizacion y contrasenas BCrypt.
+2. Roles: `ADMIN`, `MANAGER`, `RECEPCIONISTA`, `HOUSEKEEPING` y
+   `PRIVACY_OFFICER`.
+3. Huespedes: alta, edicion, busqueda, historial, enmascaramiento de datos
+   personales y auditoria de acceso a datos completos.
+4. Tipos de habitacion y habitaciones: CRUD, estados operativos y control de
+   disponibilidad.
+5. Reservas: creacion, asignacion de habitacion, prevencion de solapamientos,
+   cancelacion, grupos de reserva, movimientos de habitacion y control de
+   estados.
+6. Reglas hoteleras: politicas de cancelacion, bloqueos, no-show, early
+   check-in, late check-out, excepciones con motivo y auditoria.
+7. Motor de tarifas: planes tarifarios, temporadas, overrides diarios,
+   promociones, impuestos/cargos y cotizacion con desglose por noche.
+8. Disponibilidad: busqueda por fechas, huespedes y tipo de habitacion.
+9. Check-in/check-out: control de estados, housekeeping y registro de usuario,
+   fecha y acciones de auditoria.
+10. Pagos manuales en pesos mexicanos (MXN), saldos, ajustes y reembolsos.
+11. Privacidad: solicitudes `EXPORT`, `RECTIFY` y `DELETE`, exportacion de datos,
+   anonimizacion y bitacora de acceso.
+12. Dashboard operativo con KPIs, ocupacion, llegadas, salidas e ingresos.
+13. Frontend responsive con Tailwind CSS, rutas protegidas y cliente generado
+   desde OpenAPI.
+14. Seguridad Blue Team: cabeceras HTTP, CSP, CORS con ngrok, rate limiting en
+   autenticacion, logs de ataques y scripts para Snyk/npm audit/OWASP ZAP.
 
 ---
 
-## Estructura del proyecto
+## Estructura
 
-```
+```text
 hotel/
-├── backend/                      # Spring Boot 3 (Java 21, Maven)
-│   ├── src/main/java/com/hotelmanager/
-│   │   ├── domain/               # Entidades JPA + enums
-│   │   ├── repository/           # Spring Data JPA
-│   │   ├── security/             # JWT, Spring Security, BCrypt
-│   │   ├── service/              # Lógica de negocio (RN-1..RN-10)
-│   │   ├── config/               # OpenAPI, DataInitializer, Jackson, auditoría
-│   │   └── web/                  # Controladores, DTOs, mappers, excepciones
-│   ├── src/main/resources/
-│   │   ├── application.yml
-│   │   └── db/migration/         # Migraciones Flyway (V1, V2)
-│   ├── src/test/                 # Pruebas unitarias y de integración (H2)
-│   ├── Dockerfile
-│   ├── pom.xml
-│   └── mvnw / mvnw.cmd           # Maven Wrapper
-├── frontend/                     # React 18 + TypeScript + Vite
-│   ├── src/
-│   │   ├── api/                  # Cliente HTTP centralizado + módulos API
-│   │   ├── auth/                 # AuthContext, RequireAuth, RoleGate
-│   │   ├── components/           # Layout, tablas, formularios, diálogos, badges
-│   │   ├── hooks/                # Hooks TanStack Query
-│   │   ├── pages/                # Dashboard, huéspedes, reservas, habitaciones…
-│   │   ├── test/                 # MSW handlers + render de test
-│   │   └── utils/                # Formato, constantes, errores
-│   ├── Dockerfile
-│   └── nginx.conf
-├── database/                     # Referencia de esquema y seed (no ejecutado por Flyway)
-├── docs/                         # Arquitectura y modelo de datos
-│   ├── architecture.md
-│   └── database.md
-├── compose.yaml                  # PostgreSQL + backend + frontend
-├── .env.example
-├── .gitignore
-└── README.md
+|-- backend/                       # Spring Boot 3, Java 21, Maven
+|   |-- src/main/java/com/hotelmanager/
+|   |   |-- config/                # OpenAPI, Jackson, auditoria, inicializacion
+|   |   |-- domain/                # Entidades JPA y enums
+|   |   |-- repository/            # Spring Data JPA
+|   |   |-- security/              # JWT, refresh, filtros, CORS, monitoreo
+|   |   |-- service/               # Reglas de negocio
+|   |   `-- web/                   # Controladores, DTOs, mappers, errores
+|   |-- src/main/resources/
+|   |   |-- application.yml
+|   |   `-- db/migration/          # Flyway V1-V13
+|   `-- src/test/                  # Unitarias, integracion y Testcontainers
+|-- frontend/                      # React 18, TypeScript, Vite, Tailwind
+|   |-- src/api/generated/         # Cliente/tipos generados desde OpenAPI
+|   |-- src/auth/                  # AuthContext, refresh flow, rutas protegidas
+|   |-- src/components/            # Componentes reutilizables
+|   |-- src/hooks/                 # Hooks TanStack Query
+|   |-- src/pages/                 # Pantallas de operacion
+|   |-- src/test/                  # MSW alineado con OpenAPI
+|   `-- e2e/                       # Playwright y axe
+|-- database/                      # Esquema y seed de referencia
+|-- docs/                          # Arquitectura, reglas, privacidad, pruebas
+|-- performance/                   # Pruebas k6
+|-- security/                      # Scripts SAST/DAST/audit y reportes
+|-- compose.yaml
+|-- .env.example
+`-- README.md
 ```
 
 ---
 
 ## Stack
 
-| Capa          | Tecnología                                                        |
-|---------------|-------------------------------------------------------------------|
-| Backend       | Java 21, Spring Boot 3.3, Maven                                   |
-| Persistencia  | PostgreSQL 16, Flyway, Spring Data JPA                            |
-| Seguridad     | Spring Security + JWT (HS256, jjwt 0.12), BCrypt, refresh tokens |
-| Documentación | OpenAPI 3 (springdoc-openapi)                                     |
-| Frontend      | React 18, TypeScript, Vite, React Router 6, TanStack Query 5      |
-| CSS           | Tailwind CSS v3                                                   |
-| HTTP          | axios (withCredentials para cookies refresh)                      |
-| Tests FE      | Vitest, Testing Library, MSW, Playwright (E2E navegador)         |
-| Infra         | Docker Compose                                                    |
-
----
-
-## Requisitos
-
-- Java 21+ (o usar Docker)
-- Maven 3.9+ (o usar el wrapper `./mvnw`)
-- Node.js 20+ y npm
-- Docker + Docker Compose
-
-> En este entorno el backend se compila y prueba con Docker
-> (`maven:3.9-eclipse-temurin-21`) porque no hay Maven local.
+| Capa | Tecnologia |
+| --- | --- |
+| Backend | Java 21, Spring Boot 3.3, Maven |
+| Persistencia | PostgreSQL 16, Flyway, Spring Data JPA, Testcontainers |
+| Seguridad | Spring Security, JWT HS256, refresh token rotativo, BCrypt, rate limit |
+| Documentacion API | OpenAPI 3 / Swagger UI |
+| Frontend | React 18, TypeScript, Vite, React Router, TanStack Query |
+| UI | Tailwind CSS v3 |
+| HTTP | axios con `withCredentials` para cookie refresh |
+| Tests FE | Vitest, Testing Library, MSW, Playwright, axe |
+| Rendimiento | k6 |
+| Seguridad | npm audit, Snyk CLI, OWASP ZAP baseline |
+| Infra | Docker Compose, nginx como frontend/proxy `/api` |
 
 ---
 
 ## Credenciales de desarrollo
 
-Solo para desarrollo (semilla Flyway + `DataInitializer`):
+Solo para desarrollo y demostracion:
 
-| Rol           | Email                | Contraseña      |
-|---------------|----------------------|-----------------|
-| Administrador | `admin@hotel.test`   | `admin123`      |
-| Recepcionista | `recepcion@hotel.test` | `recepcion123` |
+| Rol | Email | Contrasena |
+| --- | --- | --- |
+| ADMIN | `admin@hotel.test` | `admin123` |
+| RECEPCIONISTA | `recepcion@hotel.test` | `recepcion123` |
 
-> Las contraseñas se insertan con el centinela `BCRYPT_PENDING` en la migración
-> `V2` y el `DataInitializer` del backend las cifra con BCrypt al arrancar.
+Las contrasenas semilla se insertan con `BCRYPT_PENDING` y el backend las cifra
+con BCrypt al arrancar.
 
 ---
 
-## Configuración
+## Configuracion
 
-Copia `.env.example` a `.env` y ajusta los valores (especialmente
-`JWT_SECRET` y `POSTGRES_PASSWORD` para producción):
+Copia `.env.example` a `.env` y ajusta secretos antes de exponer la app:
 
 ```bash
 cp .env.example .env
 ```
 
-Variables principales (ver `.env.example` para el listado completo):
+Variables importantes:
 
 - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`
-- `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`
-- `JWT_SECRET`, `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS` (900=15min), `JWT_ISSUER`
-- `REFRESH_TOKEN_EXPIRATION_SECONDS` (604800=7 días), `REFRESH_TOKEN_SECURE` (false en dev)
-- `CORS_ALLOWED_ORIGINS` (por defecto `http://localhost:5173`)
-- `VITE_API_BASE_URL` (frontend)
+- `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`,
+  `SPRING_DATASOURCE_PASSWORD`
+- `JWT_SECRET`, `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS`, `JWT_ISSUER`
+- `REFRESH_TOKEN_EXPIRATION_SECONDS`, `REFRESH_TOKEN_SECURE`
+- `APP_SECURITY_EXPOSE_DOCS`, `APP_SECURITY_EXPOSE_H2_CONSOLE`
+- `AUTH_RATE_LIMIT_ENABLED`, `AUTH_RATE_LIMIT_MAX_ATTEMPTS`,
+  `AUTH_RATE_LIMIT_WINDOW_SECONDS`
+- `CORS_ALLOWED_ORIGINS`, `CORS_ALLOWED_ORIGIN_PATTERNS`
+- `PRIVACY_RETENTION_DAYS`
+- `CHECKIN_EARLY_CHECKIN_ALLOWED`, `CHECKIN_EARLY_CHECKIN_HOURS`
+- `CHECKOUT_LATE_CHECKOUT_ALLOWED`, `CHECKOUT_LATE_CHECKOUT_HOURS`
+- `APP_TIMEZONE`
+- `VITE_API_BASE_URL`
+
+Para ngrok, el frontend debe llamar a la API por ruta relativa:
+
+```env
+VITE_API_BASE_URL=/api
+CORS_ALLOWED_ORIGIN_PATTERNS=https://*.ngrok-free.dev
+```
+
+Si se expone por HTTPS con ngrok y no solo en desarrollo local:
+
+```env
+REFRESH_TOKEN_SECURE=true
+APP_SECURITY_EXPOSE_DOCS=false
+```
 
 ---
 
-## Comandos de ejecución
+## Ejecucion
 
-### Opción A — Docker Compose (recomendado)
-
-Levanta PostgreSQL, ejecuta migraciones Flyway, arranca backend y frontend:
+### Docker Compose recomendado
 
 ```bash
 docker compose up --build
 ```
 
 - Frontend: http://localhost:5173
-- Backend API: http://localhost:8080/api
+- API por proxy nginx: http://localhost:5173/api
+- Backend directo: http://localhost:8080/api
 - Swagger UI: http://localhost:8080/api/docs
 - OpenAPI JSON: http://localhost:8080/api/openapi.json
 
-### Opción B — Desarrollo local por separado
+### Exponer para la materia con ngrok
 
-**PostgreSQL** (vía Docker):
-
-```bash
-docker compose up postgres
-```
-
-**Backend**:
+Levanta el stack y expone solo el frontend/proxy:
 
 ```bash
-cd backend
-./mvnw spring-boot:run        # o: mvn spring-boot:run
+docker compose up --build
+ngrok http 5173
 ```
 
-**Frontend**:
+Usa la URL HTTPS de ngrok, por ejemplo:
+
+```text
+https://TU-SUBDOMINIO.ngrok-free.dev
+```
+
+No expongas el puerto `8080` directamente ni el servidor dev de Vite. El flujo
+esperado es:
+
+```text
+navegador/ngrok -> nginx frontend :5173 -> /api -> backend :8080
+```
+
+Para ver logs de seguridad durante la defensa:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+docker logs -f hotel-backend
 ```
+
+Eventos relevantes en logs:
+
+- `HTTP_REQUEST`
+- `INJECTION_ATTEMPT`
+- `UNAUTHORIZED_ACCESS`
+- `CRITICAL_UNAUTHORIZED_ACCESS`
+- respuestas `429` por rate limit de login/refresh
 
 ---
 
@@ -186,136 +213,129 @@ npm run dev
 
 ```bash
 cd backend
-./mvnw test          # pruebas unitarias y de integración (H2)
-./mvnw verify        # test + package + checks
+./mvnw test
+./mvnw verify
 ```
 
-> Sin Maven local, en Docker:
-> ```
-> docker run --rm -v "$(pwd):/app" -w /app maven:3.9-eclipse-temurin-21 mvn -B clean test
-> ```
+Ultima verificacion local: 76 tests, 0 fallos.
 
-Pruebas implementadas (cubre los casos obligatorios):
-
-- `AuthServiceTest` / `AuthControllerTest`: login correcto (con cookie refresh),
-  credenciales inválidas, `/me`, refresh con cookie, logout limpia cookie.
-- `RefreshTokenTest`: generación, validación, rotación (token viejo revocado),
-  detección de reutilización (revoca toda la cadena), revocación por usuario.
-- `SecurityTest`: endpoint de ADMIN accedido por RECEPCIONISTA → 403; ADMIN → 200.
-- `ReservationServiceTest`: reserva válida (noches y total correctos), fechas
-  inválidas (`checkOut <= checkIn`), solapamiento → `RESERVATION_OVERLAP`,
-  cancelación futura vs. mismo día (`CANCEL_NOT_ALLOWED`).
-- `AvailabilityServiceTest`: disponibilidad filtra por capacidad y excluye
-  solapamientos / mantenimiento / fuera de servicio.
-- `CheckInOutServiceTest`: check-in de confirmada vigente, check-in duplicado,
-  check-out (habitación → CLEANING).
-- `PaymentServiceTest`: registro de pago, cálculo de saldo, reembolso.
-- `GuestServiceTest`, `RoomServiceTest` (transiciones de estado).
+Cubre autenticacion, refresh token, permisos, reservas, disponibilidad,
+check-in/check-out, pagos, reglas hoteleras, privacidad, concurrencia y
+restricciones reales de PostgreSQL con Testcontainers.
 
 ### Frontend
 
 ```bash
 cd frontend
-npm run lint         # ESLint, 0 errores
-npm run test         # Vitest + Testing Library + MSW (46 tests)
-npm run build        # tsc -b && vite build
-npm run test:e2e     # Playwright (requiere backend + postgres levantados)
+npm run lint
+npm run test
+npm run build
+npm run test:e2e
+npm run test:a11y
+npm run test:load
 ```
 
-Pruebas frontend (flujos principales con MSW mockeando el backend):
+Ultima verificacion local:
 
-- `LoginPage`: login navega al dashboard; error con credenciales inválidas;
-  redirección a login sin autenticación.
-- `DashboardPage`: renderiza KPIs e ingresos.
-- `GuestsPage`: lista, búsqueda y creación de huésped.
-- `AvailabilityPage`: búsqueda devuelve habitaciones; rechaza fechas inválidas.
-- `ReservationFormPage`: rechaza fechas inválidas en cliente; crea reserva
-  válida; muestra `RESERVATION_OVERLAP` del servidor.
-- `ReservationDetailPage`: cancela reserva, check-in, registro de pago con
-  actualización de saldo, check-out.
-- `RequireAuth`: redirección sin auth, acceso de ADMIN, bloqueo 403 de
-  RECEPCIONISTA a `/users`.
+- `npm run lint`: 0 errores.
+- `npm run test`: 64 tests, 0 fallos.
+- `npm run build`: OK.
+- `npm run test:e2e`: 13 tests, 0 fallos contra stack real.
+- `npm run test:a11y`: 2 tests, 0 fallos.
+
+`npm run api:generate` genera cliente y tipos frontend desde OpenAPI. Los mocks
+MSW y contract tests se usan para evitar divergencias entre frontend y backend.
 
 ---
 
-## Documentación
+## Seguridad y evidencias Blue Team
 
-- `docs/architecture.md`: casos de uso, reglas de negocio (RN-1..RN-10), modelo
-  preliminar, endpoints, contratos DTO y criterios de aceptación.
-- `docs/database.md`: modelo relacional, columnas, índices, diseño de
-  prevención de solapamientos y contrato backend.
-- `database/schema.sql` / `database/seed.sql`: copias de referencia (no
-  ejecutadas por Flyway).
-- OpenAPI en tiempo de ejecución: `/api/docs` (Swagger UI) y
-  `/api/openapi.json`.
+Scripts disponibles:
 
----
+```powershell
+.\security\npm-audit.ps1
+.\security\snyk-scan.ps1
+.\security\zap-baseline.ps1 -Target https://TU-SUBDOMINIO.ngrok-free.dev
+```
 
-## Decisiones técnicas
+Notas:
 
-- **Prevención de solapamientos**: doble defensa. En la base de datos, una
-  restricción `EXCLUDE USING gist` sobre `reservation_rooms` con una columna
-  generada `overlap_range daterange` impide dos asignaciones solapadas para la
-  misma habitación (requiere la extensión `btree_gist`). En la aplicación, la
-  validación se hace dentro de una transacción con bloqueo pesimista
-  (`SELECT ... FOR UPDATE` sobre la habitación) antes de insertar la
-  asignación; las violaciones GiST (SQLSTATE `23P01`) se traducen a
-  `409 RESERVATION_OVERLAP`. Al cancelar, se eliminan las filas de
-  `reservation_rooms` para liberar la habitación.
-- **Hashes BCrypt**: la migración semilla inserta `BCRYPT_PENDING` como
-  centinela y el `DataInitializer` del backend los cifra al arrancar (coste 10),
-  evitando shipped hashes inválidos y manteniendo idempotencia.
-- **Concurrencia**: asignación de habitación y check-in usan `@Transactional` +
-  bloqueo pesimista sobre la habitación.
-- **Importes**: `BigDecimal` (escala 2) en backend y `NUMERIC(12,2)` en BD;
-  nunca `double`. Jackson serializa como número con 2 decimales. Moneda: MXN.
-- **Refresh tokens**: access token JWT de 15 min + refresh token JWT con
-  rotación en cada uso. Solo se almacena el hash SHA-256 en BD
-  (`refresh_tokens`). Detección de reutilización: si un token revocado se
-  presenta, se revocan todos los tokens del usuario. El refresh token se
-  envía en cookie HttpOnly (`hotel_refresh`, Path `/api/auth`). El frontend
-  usa `withCredentials: true` e intercepta 401 para refrescar automáticamente.
-- **Tailwind CSS**: la interfaz usa Tailwind CSS v3 con PostCSS. No hay CSS
-  custom; todas las clases son utilidades de Tailwind.
-- **Fechas**: `LocalDate` para fechas de calendario (`check_in`/`check_out`),
-  `Instant`/`TIMESTAMPTZ` para auditoría en UTC.
-- **DTOs**: las entidades JPA no se exponen; controladores usan DTOs + mappers
-  manuales + Bean Validation.
-- **Tests backend**: H2 en modo PostgreSQL con Flyway desactivado y
-  `ddl-auto=create-drop`; la validación de solapamiento se prueba a nivel de
-  servicio (H2 no tiene GiST).
-- **Tests frontend**: Vitest + MSW (unitarios, 46 tests) + Playwright (E2E en
-  navegador real, 8 tests contra stack levantado).
-- **`columnDefinition="jsonb"`**: se omite en las anotaciones `@JdbcTypeCode`
-  para que Hibernate genere `jsonb` en PostgreSQL (valida contra el esquema)
-  pero `json` en H2 (compatibilidad de tests).
-- **CORS**: configurado para `http://localhost:5173` en desarrollo, con
-  `allowCredentials(true)` para cookies de refresh.
-- **OpenAPI**: publicado en `/api/openapi.json` y `/api/docs`, públicos sin auth.
+- `npm audit --omit=dev` no reporta vulnerabilidades de produccion.
+- El audit completo puede reportar vulnerabilidades en dependencias de
+  desarrollo como Vite/Vitest/esbuild. No quedan expuestas cuando se sirve el
+  build estatico con nginx.
+- Snyk requiere CLI autenticado (`snyk auth`).
+- OWASP ZAP debe ejecutarse contra la URL actual de ngrok.
+- El reporte base esta en `docs/blue-team-report.md`.
+
+Controles implementados:
+
+- CSP y cabeceras: `X-Frame-Options`, `X-Content-Type-Options`,
+  `Referrer-Policy`, `Permissions-Policy`, COOP/CORP y HSTS.
+- CORS con origenes exactos y patrones para `*.ngrok-free.dev`.
+- API frontend por `/api` para evitar exponer `localhost:8080` en el navegador.
+- Cookie refresh `HttpOnly`, `SameSite=Lax`, `Path=/api/auth` y `Secure`
+  configurable.
+- Rate limit en `POST /api/auth/login` y `POST /api/auth/refresh`.
+- Logs de intentos XSS, SQLi, path traversal, JNDI y command injection.
+- Errores internos genericos para no filtrar stack traces al cliente.
+- Acceso a datos personales completos auditado.
 
 ---
 
-## Limitaciones pendientes
+## Documentacion
 
-- Sin pasarela de pago real: los pagos son registros manuales (MVP).
-- No se almacenan ni procesan datos sensibles de tarjetas.
-- El check-out se permite con saldo pendiente (se registra en auditoría); no
-  bloquea por saldo impagado (decisión de MVP).
-- No hay i18n formal: los literales de la interfaz están en español.
-- Sin despliegue productivo (TLS, secretos gestionados, observabilidad): el
-  `compose.yaml` es para desarrollo.
-- Los mocks MSW de los tests unitarios no reflejan todas las reglas del backend
-  real (p. ej., MSW devuelve CONFIRMED al crear reserva; el backend real
-  devuelve PENDING si no se asigna habitación). Los tests E2E cubren el
-  comportamiento real.
+- `docs/architecture.md`: arquitectura, casos de uso y endpoints.
+- `docs/database.md`: modelo relacional, migraciones, indices y restricciones.
+- `docs/hotel-rules.md`: reglas hoteleras avanzadas.
+- `docs/privacy.md`: privacidad, retencion, acceso y anonimización.
+- `docs/privacy-threat-model.md`: modelo de amenazas de datos personales.
+- `docs/testing-strategy.md`: estrategia de pruebas, contrato, E2E, carga y a11y.
+- `docs/blue-team-report.md`: plantilla/evidencia para la defensa Blue Team.
+- `security/README.md`: comandos de seguridad.
 
 ---
 
-## Verificación final
+## Decisiones tecnicas
 
-- **Backend**: `mvn -B clean test` → BUILD SUCCESS, 52 tests, 0 fallos.
-- **Frontend**: `npm run lint` → 0 errores; `npm run test` → 46 tests, 0
-  fallos; `npm run build` → `dist/` generado sin errores de tipo.
-- **E2E**: `npm run test:e2e` → 8 tests (requiere backend + postgres levantados).
-- **Integración**: `docker compose up` levanta PostgreSQL, ejecuta Flyway
-  (V1–V4), arranca backend y sirve el frontend con Tailwind CSS.
+- **Solapamientos**: doble defensa. PostgreSQL usa `EXCLUDE USING gist` y el
+  backend valida en transaccion con bloqueo pesimista.
+- **Dinero**: `BigDecimal` en Java y `NUMERIC(12,2)` en PostgreSQL. Moneda:
+  MXN.
+- **Tokens**: access token corto + refresh token rotativo en cookie HttpOnly.
+  Solo se almacena hash SHA-256 del refresh token.
+- **Privacidad**: respuestas normales usan datos enmascarados; exportar o ver
+  datos completos requiere permiso y genera auditoria.
+- **OpenAPI**: el frontend genera cliente/tipos desde el contrato.
+- **MSW**: los mocks se alinean con OpenAPI y se validan con contract tests.
+- **ngrok**: se publica el frontend/proxy, no el backend directo.
+- **Produccion**: el compose actual es de demostracion/desarrollo, no reemplaza
+  un despliegue con TLS, secretos gestionados y observabilidad formal.
+
+---
+
+## Limitaciones conocidas
+
+- No hay pasarela de pago real; los pagos son registros manuales.
+- No se almacenan ni procesan datos de tarjetas.
+- El compose esta orientado a desarrollo y defensa academica.
+- Los secretos de `.env.example` son placeholders y deben cambiarse antes de
+  cualquier exposicion real.
+- Snyk y ZAP deben ejecutarse en el entorno de quien presenta para generar
+  evidencia actual.
+- El access token sigue viviendo en `localStorage`; para produccion seria mejor
+  mover toda la sesion a cookies HttpOnly o aplicar defensas adicionales contra
+  XSS.
+
+---
+
+## Estado verificado
+
+- Docker Compose levanta PostgreSQL, Flyway V1-V13, backend y frontend.
+- Login por `http://localhost:5173/api/auth/login` funciona.
+- Login desde origen ngrok funciona con `CORS_ALLOWED_ORIGIN_PATTERNS`.
+- El build del frontend no contiene `localhost:8080`.
+- Cabeceras de seguridad presentes en nginx.
+- Logs detectan intentos XSS y accesos criticos no autorizados.
+- Backend: 76 tests.
+- Frontend: 64 unit/contract tests, 13 E2E, 2 a11y.
