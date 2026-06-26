@@ -37,6 +37,7 @@ app:
     cookie-path: /api/auth
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:}
   security:
     expose-docs: ${APP_SECURITY_EXPOSE_DOCS:true}
     expose-h2-console: ${APP_SECURITY_EXPOSE_H2_CONSOLE:false}
