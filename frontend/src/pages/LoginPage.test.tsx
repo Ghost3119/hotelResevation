@@ -5,17 +5,19 @@ import { render } from '../test/render'
 import App from '../App'
 import { server } from '../test/server'
 import { API } from '../test/handlers'
+import { getAccessToken } from '../auth/tokenStore'
 
 describe('LoginPage', () => {
   it('inicia sesión y navega al dashboard', async () => {
     const { user } = render(<App />, { route: '/login' })
 
-    const password = screen.getByLabelText('Contraseña')
-    await user.type(password, 'admin123')
+    const password = await screen.findByLabelText('Contraseña')
+    await user.type(screen.getByLabelText('Correo electrónico'), 'admin@unit.invalid')
+    await user.type(password, 'UnitTest#Password42')
     await user.click(screen.getByRole('button', { name: /Entrar/ }))
 
     expect(await screen.findByRole('heading', { name: 'Panel' })).toBeInTheDocument()
-    expect(window.localStorage.getItem('hotel.token')).not.toBeNull()
+    expect(getAccessToken()).not.toBeNull()
   })
 
   it('muestra error con credenciales no válidas', async () => {
@@ -29,7 +31,7 @@ describe('LoginPage', () => {
     )
 
     const { user } = render(<App />, { route: '/login' })
-    await user.type(screen.getByLabelText('Contraseña'), 'wrong')
+    await user.type(await screen.findByLabelText('Contraseña'), 'wrong')
     await user.click(screen.getByRole('button', { name: /Entrar/ }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Credenciales no válidas.')

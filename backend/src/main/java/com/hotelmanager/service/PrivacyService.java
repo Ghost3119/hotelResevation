@@ -43,6 +43,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -131,8 +132,11 @@ public class PrivacyService {
         return PrivacyRequestMapper.toDto(request);
     }
 
-    @Transactional(readOnly = true)
     public GuestFullDto getGuestFull(Long guestId, String justification) {
+        if (justification == null || justification.isBlank() || justification.length() > 500) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, null,
+                    "A justification between 1 and 500 characters is required");
+        }
         Guest guest = guestRepository.findById(guestId)
                 .orElseThrow(() -> new EntityNotFoundException("Guest not found: " + guestId));
         GuestFullDto dto = GuestMapper.toFullDto(guest);
@@ -177,7 +181,9 @@ public class PrivacyService {
         guest.setLastName("");
         guest.setEmail(null);
         guest.setPhone(null);
-        guest.setDocumentNumber(null);
+        // document_number is NOT NULL. Replace it with a random, non-identifying
+        // tombstone instead of failing the transaction at flush/commit time.
+        guest.setDocumentNumber("ANONYMIZED-" + UUID.randomUUID());
         guest.setNationality(null);
         guestRepository.save(guest);
         logAccess(guest.getId(), DataAccessAction.ANONYMIZE, request.getNotes());

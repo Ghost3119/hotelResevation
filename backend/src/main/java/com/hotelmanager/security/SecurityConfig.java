@@ -34,7 +34,7 @@ public class SecurityConfig {
     @Value("${app.cors.allowed-origin-patterns:}")
     private String allowedOriginPatterns;
 
-    @Value("${app.security.expose-docs:true}")
+    @Value("${app.security.expose-docs:false}")
     private boolean exposeDocs;
 
     @Value("${app.security.expose-h2-console:false}")
@@ -57,7 +57,7 @@ public class SecurityConfig {
                     .contentSecurityPolicy(csp -> csp.policyDirectives(
                             "default-src 'self'; " +
                             "script-src 'self'; " +
-                            "style-src 'self' 'unsafe-inline'; " +
+                            "style-src 'self'; " +
                             "img-src 'self' data:; " +
                             "font-src 'self' data:; " +
                             "connect-src 'self'; " +
@@ -117,7 +117,8 @@ public class SecurityConfig {
     private String[] publicMatchers() {
         List<String> matchers = new ArrayList<>(List.of(
                 "/api/auth/login",
-                "/api/auth/refresh"
+                "/api/auth/refresh",
+                "/api/auth/logout"
         ));
 
         if (exposeDocs) {

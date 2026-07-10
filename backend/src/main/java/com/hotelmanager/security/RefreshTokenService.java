@@ -5,6 +5,7 @@ import com.hotelmanager.domain.User;
 import com.hotelmanager.repository.RefreshTokenRepository;
 import com.hotelmanager.repository.UserRepository;
 import com.hotelmanager.web.exception.BusinessException;
+import io.jsonwebtoken.Claims;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -63,9 +64,11 @@ public class RefreshTokenService {
         if (rawToken == null || rawToken.isBlank()) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, null, "Missing refresh token");
         }
+        Claims claims = parseRefreshClaims(rawToken);
         String hash = sha256Hex(rawToken);
         RefreshToken token = refreshTokenRepository.findByTokenHash(hash)
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, null, "Invalid refresh token"));
+        requireMatchingClaims(token, claims);
         if (token.getRevokedAt() != null) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, null, "Refresh token revoked");
         }
@@ -75,19 +78,21 @@ public class RefreshTokenService {
         return token;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = RefreshTokenReuseException.class)
     public RotationResult rotate(String rawToken) {
         if (rawToken == null || rawToken.isBlank()) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, null, "Missing refresh token");
         }
+        Claims claims = parseRefreshClaims(rawToken);
         String hash = sha256Hex(rawToken);
-        RefreshToken current = refreshTokenRepository.findByTokenHash(hash)
+        RefreshToken current = refreshTokenRepository.findByTokenHashForUpdate(hash)
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, null, "Invalid refresh token"));
+        requireMatchingClaims(current, claims);
         if (current.getRevokedAt() != null) {
             log.warn("Refresh token reuse detected: jti={} user={}. Revoking all tokens for user.",
                     current.getJti(), current.getUserId());
             refreshTokenRepository.revokeAllForUser(current.getUserId(), Instant.now());
-            throw new BusinessException(HttpStatus.UNAUTHORIZED, null, "Refresh token reuse detected");
+            throw new RefreshTokenReuseException();
         }
         if (current.getExpiresAt() == null || current.getExpiresAt().isBefore(Instant.now())) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, null, "Refresh token expired");
@@ -157,6 +162,27 @@ public class RefreshTokenService {
             return HexFormat.of().formatHex(digest);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 algorithm not available", e);
+        }
+    }
+
+    private Claims parseRefreshClaims(String rawToken) {
+        try {
+            return jwtService.parseRefreshToken(rawToken);
+        } catch (Exception ex) {
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, null, "Invalid refresh token");
+        }
+    }
+
+    private void requireMatchingClaims(RefreshToken token, Claims claims) {
+        if (!String.valueOf(token.getUserId()).equals(claims.getSubject())
+                || !token.getJti().equals(claims.getId())) {
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, null, "Invalid refresh token");
+        }
+    }
+
+    private static final class RefreshTokenReuseException extends BusinessException {
+        private RefreshTokenReuseException() {
+            super(HttpStatus.UNAUTHORIZED, null, "Refresh token reuse detected");
         }
     }
 }

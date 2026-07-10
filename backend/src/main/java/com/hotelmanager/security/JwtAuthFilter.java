@@ -37,11 +37,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
             try {
-                Claims claims = jwtService.parse(token);
+                Claims claims = jwtService.parseAccessToken(token);
                 String subject = claims.getSubject();
-                Object typeClaim = claims.get("type");
-                boolean isRefresh = "refresh".equals(typeClaim);
-                if (subject != null && !isRefresh && SecurityContextHolder.getContext().getAuthentication() == null) {
+                if (subject != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     Optional<User> opt = userRepository.findById(Long.valueOf(subject));
                     if (opt.isPresent()) {
                         User user = opt.get();

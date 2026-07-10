@@ -47,7 +47,7 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, null, "Invalid credentials"));
         if (!Boolean.TRUE.equals(user.getActive())) {
-            throw new BusinessException(HttpStatus.UNAUTHORIZED, null, "User is inactive");
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, null, "Invalid credentials");
         }
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, null, "Invalid credentials");

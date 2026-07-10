@@ -124,7 +124,7 @@ class PrivacyIntegrationTest extends PostgresIntegrationTest {
         assertEquals("", anonymized.getLastName());
         assertNull(anonymized.getEmail());
         assertNull(anonymized.getPhone());
-        assertNull(anonymized.getDocumentNumber());
+        assertTrue(anonymized.getDocumentNumber().startsWith("ANONYMIZED-"));
         assertNull(anonymized.getNationality());
 
         List<Reservation> reservations = reservationRepository.findByGuestIdOrderByCreatedAtDesc(g.getId());

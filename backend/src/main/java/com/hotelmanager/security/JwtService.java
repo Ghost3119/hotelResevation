@@ -70,9 +70,25 @@ public class JwtService {
     public Claims parse(String token) {
         return Jwts.parser()
                 .verifyWith(key)
+                .requireIssuer(issuer)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public Claims parseAccessToken(String token) {
+        return requireType(parse(token), "access");
+    }
+
+    public Claims parseRefreshToken(String token) {
+        return requireType(parse(token), "refresh");
+    }
+
+    private Claims requireType(Claims claims, String expectedType) {
+        if (!expectedType.equals(claims.get("type", String.class))) {
+            throw new IllegalArgumentException("Unexpected JWT type");
+        }
+        return claims;
     }
 
     public boolean isValid(String token) {

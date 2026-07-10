@@ -35,6 +35,12 @@ public class SecurityMonitoringFilter extends OncePerRequestFilter {
             new Signal("COMMAND_INJECTION", Pattern.compile("(;|&&|\\|\\|)\\s*(cat|id|whoami|curl|wget|powershell|cmd)\\b", Pattern.CASE_INSENSITIVE))
     );
 
+    private final ClientIpResolver clientIpResolver;
+
+    public SecurityMonitoringFilter(ClientIpResolver clientIpResolver) {
+        this.clientIpResolver = clientIpResolver;
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -48,7 +54,7 @@ public class SecurityMonitoringFilter extends OncePerRequestFilter {
             long durationMs = (System.nanoTime() - started) / 1_000_000;
             String method = wrapped.getMethod();
             String path = wrapped.getRequestURI();
-            String ip = clientIp(wrapped);
+            String ip = clientIpResolver.resolve(wrapped);
             int status = response.getStatus();
 
             log.info("HTTP_REQUEST method={} path={} ip={} status={} durationMs={} userAgent={}",
@@ -102,18 +108,6 @@ public class SecurityMonitoringFilter extends OncePerRequestFilter {
         }
     }
 
-    private String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp;
-        }
-        return request.getRemoteAddr();
-    }
-
     private boolean isSensitivePath(String path) {
         return path.startsWith("/api/users")
                 || path.startsWith("/api/privacy")
@@ -125,7 +119,8 @@ public class SecurityMonitoringFilter extends OncePerRequestFilter {
         if (value == null || value.isBlank()) {
             return "-";
         }
-        return value.replaceAll("[\\r\\n\\t]", " ");
+        String sanitized = value.replaceAll("[\\r\\n\\t]", " ");
+        return sanitized.length() <= 512 ? sanitized : sanitized.substring(0, 512);
     }
 
     private record Signal(String name, Pattern pattern) {}

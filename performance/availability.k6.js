@@ -1,9 +1,13 @@
 import http from 'k6/http'
 import { check, sleep } from 'k6'
 
-const API_BASE_URL = __ENV.API_BASE_URL || 'http://localhost:8080/api'
-const EMAIL = __ENV.ADMIN_EMAIL || 'admin@hotel.test'
-const PASSWORD = __ENV.ADMIN_PASSWORD || 'admin123'
+const API_BASE_URL = __ENV.API_BASE_URL || 'http://localhost:5173/api'
+const EMAIL = __ENV.ADMIN_EMAIL
+const PASSWORD = __ENV.ADMIN_PASSWORD
+
+if (!EMAIL || !PASSWORD) {
+  throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required for the load test')
+}
 
 export const options = {
   scenarios: {

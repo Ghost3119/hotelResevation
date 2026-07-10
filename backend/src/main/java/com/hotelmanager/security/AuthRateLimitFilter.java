@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
@@ -19,6 +20,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
@@ -27,7 +29,9 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(AuthRateLimitFilter.class);
 
     private final Map<String, Deque<Long>> attemptsByKey = new ConcurrentHashMap<>();
+    private final AtomicLong requestCounter = new AtomicLong();
     private final Clock clock;
+    private final ClientIpResolver clientIpResolver;
 
     @Value("${app.security.auth-rate-limit.enabled:true}")
     private boolean enabled;
@@ -38,11 +42,16 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     @Value("${app.security.auth-rate-limit.window-seconds:60}")
     private long windowSeconds;
 
-    public AuthRateLimitFilter() {
-        this(Clock.systemUTC());
+    @Value("${app.security.auth-rate-limit.max-tracked-keys:10000}")
+    private int maxTrackedKeys;
+
+    @Autowired
+    public AuthRateLimitFilter(ClientIpResolver clientIpResolver) {
+        this(clientIpResolver, Clock.systemUTC());
     }
 
-    AuthRateLimitFilter(Clock clock) {
+    AuthRateLimitFilter(ClientIpResolver clientIpResolver, Clock clock) {
+        this.clientIpResolver = clientIpResolver;
         this.clock = clock;
     }
 
@@ -55,10 +64,29 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             return;
         }
 
-        String key = request.getRequestURI() + ":" + clientIp(request);
+        String clientIp = clientIpResolver.resolve(request);
+        String key = request.getRequestURI() + ":" + clientIp;
         long now = clock.millis();
         long cutoff = now - windowSeconds * 1000L;
-        Deque<Long> attempts = attemptsByKey.computeIfAbsent(key, ignored -> new ArrayDeque<>());
+        if ((requestCounter.incrementAndGet() & 255L) == 0L) {
+            removeExpiredKeys(cutoff);
+        }
+
+        Deque<Long> attempts = attemptsByKey.get(key);
+        if (attempts == null) {
+            if (attemptsByKey.size() >= maxTrackedKeys) {
+                removeExpiredKeys(cutoff);
+                if (attemptsByKey.size() >= maxTrackedKeys) {
+                    log.warn("AUTH_RATE_LIMIT_CAPACITY path={} trackedKeys={}",
+                            request.getRequestURI(), attemptsByKey.size());
+                    reject(response);
+                    return;
+                }
+            }
+            Deque<Long> newAttempts = new ArrayDeque<>();
+            Deque<Long> existing = attemptsByKey.putIfAbsent(key, newAttempts);
+            attempts = existing != null ? existing : newAttempts;
+        }
 
         synchronized (attempts) {
             while (!attempts.isEmpty() && attempts.peekFirst() < cutoff) {
@@ -66,7 +94,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             }
             if (attempts.size() >= maxAttempts) {
                 log.warn("AUTH_RATE_LIMIT method={} path={} ip={} attempts={} windowSeconds={}",
-                        request.getMethod(), request.getRequestURI(), clientIp(request), attempts.size(), windowSeconds);
+                        request.getMethod(), request.getRequestURI(), clientIp, attempts.size(), windowSeconds);
                 reject(response);
                 return;
             }
@@ -84,16 +112,16 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         return "/api/auth/login".equals(path) || "/api/auth/refresh".equals(path);
     }
 
-    private String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp;
-        }
-        return request.getRemoteAddr();
+    private void removeExpiredKeys(long cutoff) {
+        attemptsByKey.entrySet().removeIf(entry -> {
+            Deque<Long> values = entry.getValue();
+            synchronized (values) {
+                while (!values.isEmpty() && values.peekFirst() < cutoff) {
+                    values.removeFirst();
+                }
+                return values.isEmpty();
+            }
+        });
     }
 
     private void reject(HttpServletResponse response) throws IOException {

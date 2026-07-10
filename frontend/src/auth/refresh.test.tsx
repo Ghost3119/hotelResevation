@@ -5,7 +5,7 @@ import { render } from '../test/render'
 import App from '../App'
 import { server } from '../test/server'
 import { API } from '../test/handlers'
-import { STORAGE_TOKEN_KEY } from '../utils/constants'
+import { getAccessToken } from './tokenStore'
 
 const NOW = '2026-06-17T10:00:00'
 
@@ -53,8 +53,8 @@ describe('Refresh token flow', () => {
 
     // La lista de huéspedes aparece tras el refresh + reintento
     expect(await screen.findByText('John Doe')).toBeInTheDocument()
-    // El access token en localStorage se actualiza con el nuevo token del refresh
-    expect(window.localStorage.getItem(STORAGE_TOKEN_KEY)).toBe('new-test-token')
+    // El access token se actualiza solo en memoria.
+    expect(getAccessToken()).toBe('new-test-token')
     // Se hicieron dos llamadas a /guests (la original 401 + el reintento)
     expect(guestsCalls).toBe(2)
   })
@@ -83,10 +83,10 @@ describe('Refresh token flow', () => {
 
       render(<App />, { route: '/guests', authenticated: true, role: 'ADMIN' })
 
-      // El error del refresh se propaga al estado de error de la página
-      expect(await screen.findByText('Refresh inválido.')).toBeInTheDocument()
-      // El access token se elimina de localStorage
-      expect(window.localStorage.getItem(STORAGE_TOKEN_KEY)).toBeNull()
+      // La sesión se descarta y la aplicación vuelve al login.
+      expect(await screen.findByRole('heading', { name: 'Hotel Manager' })).toBeInTheDocument()
+      // El access token se elimina de memoria.
+      expect(getAccessToken()).toBeNull()
     } finally {
       console.error = originalError
     }

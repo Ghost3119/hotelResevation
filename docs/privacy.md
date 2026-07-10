@@ -97,7 +97,7 @@ endpoint.
 
 | Role              | Can view full PII? | Mechanism                                              |
 |-------------------|:------------------:|--------------------------------------------------------|
-| PRIVACY_OFFICER   | Yes                | `GET /api/guests/{id}/full` — requires `justification` query param (recommended). Access is audit-logged (§3). |
+| PRIVACY_OFFICER   | Yes                | `GET /api/guests/{id}/full` — requires a 1-500 character `justification` query param. Access is audit-logged (§3). |
 | ADMIN             | Indirect           | Can grant `VIEW_FULL_PII` permission; does not call `/full` directly per the controller's `@PreAuthorize("hasRole('PRIVACY_OFFICER')")`. |
 | RECEPCIONISTA     | No                 | Sees masked `GuestDto` only.                           |
 | MANAGER           | No                 | Sees masked `GuestDto` only.                           |
@@ -132,7 +132,7 @@ what, when, and why.
 | `user_id`        | BIGINT   | The authenticated user who performed the access.                   |
 | `guest_id`       | BIGINT   | The guest whose data was accessed.                                 |
 | `action`         | Enum     | `VIEW`, `EXPORT`, `MODIFY`, `ANONYMIZE` (`DataAccessAction`).      |
-| `justification`  | TEXT     | Free-text reason supplied by the operator (optional for VIEW, recommended). |
+| `justification`  | TEXT     | Required 1-500 character reason supplied by the operator for VIEW. |
 | `created_at`     | TIMESTAMPTZ | UTC timestamp of the access.                                    |
 
 ### What triggers a log entry
@@ -389,8 +389,8 @@ variables, with `.env.example` documenting the names and placeholder values.
 | Env var                          | Used by               | Dev default (placeholder)        | Production source            |
 |----------------------------------|-----------------------|----------------------------------|------------------------------|
 | `JWT_SECRET`                     | `app.jwt.secret`      | `change-this-...`                | Secrets manager              |
-| `SPRING_DATASOURCE_PASSWORD`     | DB connection         | `hotel_secret_change_me`         | Secrets manager              |
-| `POSTGRES_PASSWORD`              | DB container          | `hotel_secret_change_me`         | Secrets manager              |
+| `SPRING_DATASOURCE_PASSWORD`     | DB connection         | Required env secret              | Secrets manager              |
+| `POSTGRES_PASSWORD`              | DB container          | Required env secret              | Secrets manager              |
 | `REFRESH_TOKEN_SECURE`           | Cookie flag           | `false`                          | `true` (env / secrets mgr)   |
 | `PII_ENCRYPTION_KEY` *(future)*  | AES-GCM (§7)          | — (not set in MVP)               | Secrets manager              |
 | `PII_HMAC_KEY` *(future)*        | HMAC blind index (§7) | — (not set in MVP)               | Secrets manager              |

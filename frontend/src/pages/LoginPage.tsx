@@ -10,7 +10,7 @@ export function LoginPage() {
   const { login, user, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [email, setEmail] = useState('admin@hotel.test')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -64,6 +64,7 @@ export function LoginPage() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          maxLength={254}
           autoComplete="username"
           required
         />
@@ -73,6 +74,7 @@ export function LoginPage() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          maxLength={72}
           autoComplete="current-password"
           required
         />

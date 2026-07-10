@@ -13,7 +13,7 @@ export const API = '/api'
 
 export const adminUser: UserDto = {
   id: 1,
-  email: 'admin@hotel.test',
+  email: 'admin@unit.invalid',
   fullName: 'Admin User',
   role: 'ADMIN',
   active: true,
@@ -28,6 +28,16 @@ export const recepUser: UserDto = {
 }
 
 const NOW = '2026-06-17T10:00:00'
+
+function isoDaysFromToday(days: number): string {
+  const date = new Date()
+  date.setHours(12, 0, 0, 0)
+  date.setDate(date.getDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+const FUTURE_CHECK_IN = isoDaysFromToday(7)
+const FUTURE_CHECK_OUT = isoDaysFromToday(9)
 
 const allGuests: GuestDto[] = [
   {
@@ -93,8 +103,8 @@ const dashboard: DashboardDto = {
       status: 'CONFIRMED',
       guestId: 1,
       guestName: 'John Doe',
-      checkIn: '2026-07-01',
-      checkOut: '2026-07-03',
+      checkIn: FUTURE_CHECK_IN,
+      checkOut: FUTURE_CHECK_OUT,
       nights: 2,
       totalAmount: 240.0,
       balance: 240.0,
@@ -118,8 +128,8 @@ function freshStore(): Store {
     status: 'CONFIRMED',
     guestId: 1,
     guestName: 'John Doe',
-    checkIn: '2026-07-01',
-    checkOut: '2026-07-03',
+    checkIn: FUTURE_CHECK_IN,
+    checkOut: FUTURE_CHECK_OUT,
     nights: 2,
     adults: 2,
     children: 0,
@@ -181,13 +191,19 @@ function freshStore(): Store {
 }
 
 let store: Store = freshStore()
+let authenticatedSession = false
 
 export function setMeUser(user: UserDto) {
   meUser = user
 }
 
+export function setAuthenticatedSession(authenticated: boolean) {
+  authenticatedSession = authenticated
+}
+
 export function resetDb() {
   meUser = adminUser
+  authenticatedSession = false
   store = freshStore()
 }
 
@@ -250,6 +266,7 @@ export const handlers = [
     if (!body.email || !body.password) {
       return errorResponse(401, 'BAD_CREDENTIALS', 'Credenciales no válidas.')
     }
+    authenticatedSession = true
     return HttpResponse.json({
       token: 'test-jwt-token',
       type: 'Bearer',
@@ -258,10 +275,16 @@ export const handlers = [
     })
   }),
   http.get(`${API}/auth/me`, () => HttpResponse.json(meUser)),
-  http.post(`${API}/auth/refresh`, () =>
-    HttpResponse.json({ token: 'new-test-token', type: 'Bearer', expiresIn: 900 }),
-  ),
-  http.post(`${API}/auth/logout`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${API}/auth/refresh`, () => {
+    if (!authenticatedSession) {
+      return errorResponse(401, 'UNAUTHORIZED', 'Missing refresh token')
+    }
+    return HttpResponse.json({ token: 'new-test-token', type: 'Bearer', expiresIn: 900 })
+  }),
+  http.post(`${API}/auth/logout`, () => {
+    authenticatedSession = false
+    return new HttpResponse(null, { status: 204 })
+  }),
 
   // Dashboard
   http.get(`${API}/dashboard`, () => HttpResponse.json(dashboard)),

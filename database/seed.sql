@@ -14,23 +14,8 @@
 -- 1200/1800/4500/2800 MXN-noche y reajusta la reserva #1 y el pago #1.
 -- Los importes historicos se tratan como MXN (no hay conversion de moneda).
 --
--- ================================================= CONTRATO PARA EL BACKEND ===
--- Las password_hash se insertan con el valor centinela 'BCRYPT_PENDING'.
--- El backend DEBE implementar un DataInitializer (CommandLineRunner /
--- ApplicationRunner / @PostConstruct) que, DESPUES de Flyway, reemplace esas
--- filas con hashes BCrypt reales (coste 10):
---   UPDATE users SET password_hash = :bcrypt WHERE password_hash = 'BCRYPT_PENDING';
--- usando BCryptPasswordEncoder.encode(plaintext). Solo asi el login funciona.
---
--- Credenciales en texto plano (SOLO desarrollo):
---   admin@hotel.test     / admin123       (ADMIN)
---   recepcion@hotel.test / recepcion123   (RECEPCIONISTA)
--- =============================================================================
-
--- Users -----------------------------------------------------------------------
-INSERT INTO users (id, email, password_hash, full_name, role, active) VALUES
-    (1, 'admin@hotel.test',     'BCRYPT_PENDING', 'Administrador del Sistema', 'ADMIN',         TRUE),
-    (2, 'recepcion@hotel.test', 'BCRYPT_PENDING', 'Recepcionista Demo',        'RECEPCIONISTA', TRUE);
+-- Las cuentas se crean de forma opcional desde secretos de entorno del backend.
+-- Este archivo nunca inserta usuarios ni contrasenas utilizables.
 
 -- Room types ------------------------------------------------------------------
 -- Precios en MXN (V4 ajusta los originales tipo EUR 80/120/250/180 a valores
@@ -82,7 +67,7 @@ INSERT INTO guests (id, first_name, last_name, email, phone, document_number, na
 -- Reservation -----------------------------------------------------------------
 -- Reserva CONFIRMED de 2 noches: check_in = manana, check_out = dentro de 3 dias.
 -- Tipo Doble (id=2), precio 1800.00 MXN/noche -> total = 2 * 1800.00 = 3600.00.
--- adults=2, children=0. Creada por el admin (user id=1).
+-- adults=2, children=0. Sin usuario creador en los datos de referencia.
 INSERT INTO reservations (
     id, guest_id, status, check_in, check_out, adults, children,
     room_type_id, nightly_price, total_amount, notes, special_requests, created_by
@@ -94,7 +79,7 @@ INSERT INTO reservations (
     2, 1800.00, 3600.00,
     'Reserva semilla de demostracion.',
     'Cama matrimonial si es posible.',
-    1
+    NULL
 );
 
 -- Asignacion de la habitacion 201 (id=5) a la reserva 1 para el mismo rango ----
@@ -111,17 +96,16 @@ UPDATE rooms
 -- Saldo restante = 3600.00 - 1500.00 = 2100.00, para que el flujo de check-out
 -- con saldo pendiente sea testeable (RN-6).
 INSERT INTO payments (id, reservation_id, amount, method, status, reference, paid_at, created_by)
-VALUES (1, 1, 1500.00, 'CASH', 'COMPLETED', 'SEED-0001', now(), 1);
+VALUES (1, 1, 1500.00, 'CASH', 'COMPLETED', 'SEED-0001', now(), NULL);
 
 -- Audit events ----------------------------------------------------------------
 INSERT INTO audit_events (id, user_id, action, entity_type, entity_id, metadata) VALUES
-    (1, 1, 'SEED_INIT', 'SYSTEM', NULL,
+    (1, NULL, 'SEED_INIT', 'SYSTEM', NULL,
      '{"note":"Inicializacion de datos semilla"}'::jsonb),
-    (2, 1, 'RESERVATION_CREATED', 'RESERVATION', 1,
+    (2, NULL, 'RESERVATION_CREATED', 'RESERVATION', 1,
      '{"guestId":1,"roomTypeId":2,"roomId":5,"nights":2,"nightlyPrice":"1800.00","totalAmount":"3600.00"}'::jsonb);
 
 -- Resincroniza las secuencias IDENTITY tras los inserts con IDs explicitos -----
-SELECT setval(pg_get_serial_sequence('users',             'id'), (SELECT MAX(id) FROM users));
 SELECT setval(pg_get_serial_sequence('room_types',        'id'), (SELECT MAX(id) FROM room_types));
 SELECT setval(pg_get_serial_sequence('rooms',             'id'), (SELECT MAX(id) FROM rooms));
 SELECT setval(pg_get_serial_sequence('guests',            'id'), (SELECT MAX(id) FROM guests));

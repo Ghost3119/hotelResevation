@@ -85,6 +85,10 @@ public class RateEngineService {
 
         RatePlan ratePlan = resolveRatePlan(roomTypeId, ratePlanId);
         long nights = checkOut.toEpochDay() - checkIn.toEpochDay();
+        if (nights > 730) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_DATES,
+                    "A quote cannot exceed 730 nights");
+        }
 
         List<PromotionRule> applicablePromotions = findApplicablePromotions(ratePlan, checkIn,
                 (int) nights, adultCount + childCount, promotionCode);

@@ -1,8 +1,7 @@
 import axios from 'axios'
 import { normalizeError } from '../utils/error'
+import { getAccessToken, setAccessToken } from '../auth/tokenStore'
 import type { RefreshResponse } from './types'
-
-export const TOKEN_KEY = 'hotel.token'
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
@@ -12,7 +11,7 @@ export const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY)
+  const token = getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -20,7 +19,18 @@ api.interceptors.request.use((config) => {
 })
 
 let isRefreshing = false
-let failedQueue: Array<() => void> = []
+let failedQueue: Array<{
+  resolve: (token: string) => void
+  reject: (error: unknown) => void
+}> = []
+
+function settleQueue(error: unknown, token: string | null) {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error || !token) reject(error)
+    else resolve(token)
+  })
+  failedQueue = []
+}
 
 api.interceptors.response.use(
   (response) => response,
@@ -33,9 +43,13 @@ api.interceptors.response.use(
     ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
-          failedQueue.push(() => {
-            originalRequest._retry = true
-            api(originalRequest).then(resolve).catch(reject)
+          failedQueue.push({
+            resolve: (token) => {
+              originalRequest._retry = true
+              originalRequest.headers.Authorization = `Bearer ${token}`
+              api(originalRequest).then(resolve).catch(reject)
+            },
+            reject,
           })
         })
       }
@@ -43,14 +57,13 @@ api.interceptors.response.use(
       originalRequest._retry = true
       try {
         const res = await api.post<RefreshResponse>('/auth/refresh')
-        localStorage.setItem(TOKEN_KEY, res.data.token)
-        failedQueue.forEach((cb) => cb())
-        failedQueue = []
+        setAccessToken(res.data.token)
+        settleQueue(null, res.data.token)
         originalRequest.headers.Authorization = `Bearer ${res.data.token}`
         return api(originalRequest)
       } catch (refreshErr) {
-        failedQueue = []
-        localStorage.removeItem(TOKEN_KEY)
+        settleQueue(refreshErr, null)
+        setAccessToken(null)
         if (typeof window !== 'undefined') {
           window.location.href = '/login'
         }

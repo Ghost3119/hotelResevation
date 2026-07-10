@@ -63,11 +63,11 @@ describe('OpenAPI contract: MSW handlers return schema-shaped payloads', () => {
   beforeAll(() => setMeUser(adminUser))
 
   it('auth/login returns an AuthResponse', async () => {
-    const res = await generatedApi.auth.login({ email: 'admin@hotel.test', password: 'secret' })
+    const res = await generatedApi.auth.login({ email: 'admin@unit.invalid', password: 'UnitTest#Password42' })
     expect(res.token).toBeTypeOf('string')
     expect(res.type).toBe('Bearer')
     expect(res.user.id).toBeTypeOf('number')
-    expect(res.user.email).toBe('admin@hotel.test')
+    expect(res.user.email).toBe('admin@unit.invalid')
     // Type is assignable to the schema DTO.
     expectTypeOf(res).toMatchTypeOf<AuthResponse>()
   })

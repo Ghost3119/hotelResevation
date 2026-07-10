@@ -78,7 +78,7 @@ public class GuestController {
     @GetMapping("/{id}/full")
     @PreAuthorize("hasRole('PRIVACY_OFFICER')")
     public ResponseEntity<GuestFullDto> getFull(@PathVariable Long id,
-                                                @RequestParam(name = "justification", required = false) String justification) {
+                                                @RequestParam(name = "justification") String justification) {
         return ResponseEntity.ok(privacyService.getGuestFull(id, justification));
     }
 }

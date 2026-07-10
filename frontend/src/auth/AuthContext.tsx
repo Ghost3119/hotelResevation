@@ -7,9 +7,10 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { authApi } from '../api/auth.api'
 import type { LoginRequest, UserDto } from '../api/types'
-import { STORAGE_TOKEN_KEY } from '../utils/constants'
+import { getAccessToken, setAccessToken, subscribeAccessToken } from './tokenStore'
 
 interface AuthContextValue {
   user: UserDto | null
@@ -21,33 +22,49 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
+let restoreSessionPromise: Promise<{ token: string; user: UserDto }> | null = null
+
+function restoreSession() {
+  if (!restoreSessionPromise) {
+    restoreSessionPromise = authApi.refresh()
+      .then((refresh) => {
+        setAccessToken(refresh.token)
+        return authApi.me().then((user) => ({ token: refresh.token, user }))
+      })
+      .finally(() => {
+        restoreSessionPromise = null
+      })
+  }
+  return restoreSessionPromise
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const [user, setUser] = useState<UserDto | null>(null)
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem(STORAGE_TOKEN_KEY)
-  )
-  const [loading, setLoading] = useState<boolean>(() => !!localStorage.getItem(STORAGE_TOKEN_KEY))
+  const [token, setToken] = useState<string | null>(() => getAccessToken())
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => subscribeAccessToken((nextToken) => {
+    setToken(nextToken)
+    if (!nextToken) {
+      setUser(null)
+      queryClient.clear()
+    }
+  }), [queryClient])
 
   useEffect(() => {
     let active = true
-    const stored = localStorage.getItem(STORAGE_TOKEN_KEY)
-    if (!stored) {
-      setLoading(false)
-      return
-    }
-    authApi
-      .me()
-      .then((me) => {
+    restoreSession()
+      .then(({ token: restoredToken, user: restoredUser }) => {
         if (active) {
-          setUser(me)
-          setToken(stored)
+          setAccessToken(restoredToken)
+          setUser(restoredUser)
         }
       })
       .catch(() => {
         if (active) {
-          localStorage.removeItem(STORAGE_TOKEN_KEY)
+          setAccessToken(null)
           setUser(null)
-          setToken(null)
         }
       })
       .finally(() => {
@@ -60,23 +77,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (data: LoginRequest) => {
     const res = await authApi.login(data)
-    localStorage.setItem(STORAGE_TOKEN_KEY, res.token)
-    setToken(res.token)
+    queryClient.clear()
+    setAccessToken(res.token)
     setUser(res.user)
     return res.user
-  }, [])
+  }, [queryClient])
 
   const logout = useCallback(async () => {
     try {
       await authApi.logout()
     } catch {
-      // ignore network/server errors on logout — still clear locally
+      // Clear local sensitive state even when the server cannot be reached.
     } finally {
-      localStorage.removeItem(STORAGE_TOKEN_KEY)
-      setToken(null)
+      setAccessToken(null)
       setUser(null)
+      queryClient.clear()
     }
-  }, [])
+  }, [queryClient])
 
   const value = useMemo<AuthContextValue>(
     () => ({ user, token, loading, login, logout }),

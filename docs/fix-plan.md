@@ -4,7 +4,8 @@
 
 ### Entorno de reproducción
 - Docker Compose levantado: PostgreSQL 16 + backend Spring Boot + frontend Vite.
-- Login confirmado con `admin@hotel.test` / `admin123` y `recepcion@hotel.test` / `recepcion123`.
+- El login histórico usaba cuentas semilla predecibles; fueron retiradas y deben
+  considerarse comprometidas en cualquier base existente.
 - Pruebas existentes: backend 38 tests OK, frontend 19 tests OK (antes de cambios).
 - Errores reproducidos vía curl directo al backend real + inspección de código.
 

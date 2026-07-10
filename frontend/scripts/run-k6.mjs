@@ -7,6 +7,13 @@ const repoRoot = join(__dirname, '..', '..')
 const performanceDir = join(repoRoot, 'performance')
 const scriptPath = join(performanceDir, 'availability.k6.js')
 
+for (const name of ['ADMIN_EMAIL', 'ADMIN_PASSWORD']) {
+  if (!process.env[name]) {
+    console.error(`[test:load] ${name} is required; no default credential is provided.`)
+    process.exit(1)
+  }
+}
+
 function run(command, args, options = {}) {
   return spawnSync(command, args, {
     stdio: 'inherit',
@@ -34,7 +41,7 @@ if (!commandExists('docker', ['version'])) {
   process.exit(1)
 }
 
-const apiBaseUrl = process.env.API_BASE_URL || 'http://host.docker.internal:8080/api'
+const apiBaseUrl = process.env.API_BASE_URL || 'http://host.docker.internal:5173/api'
 console.log('[test:load] k6 not found locally. Running grafana/k6 through Docker.')
 
 const result = run('docker', [
@@ -43,9 +50,9 @@ const result = run('docker', [
   '-e',
   `API_BASE_URL=${apiBaseUrl}`,
   '-e',
-  `ADMIN_EMAIL=${process.env.ADMIN_EMAIL || 'admin@hotel.test'}`,
+  `ADMIN_EMAIL=${process.env.ADMIN_EMAIL}`,
   '-e',
-  `ADMIN_PASSWORD=${process.env.ADMIN_PASSWORD || 'admin123'}`,
+  `ADMIN_PASSWORD=${process.env.ADMIN_PASSWORD}`,
   '-v',
   `${performanceDir}:/scripts:ro`,
   'grafana/k6',

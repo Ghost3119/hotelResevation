@@ -31,13 +31,13 @@ class AuthServiceTest {
     @BeforeEach
     void setup() {
         User u = TestData.userWithPassword(userRepository, passwordEncoder,
-                "admin-test@hotel.test", "admin123", UserRole.ADMIN);
+                "admin-test@unit.invalid", "UnitTest#Password42", UserRole.ADMIN);
         userId = u.getId();
     }
 
     @Test
     void loginSuccessReturnsTokenUserAndRefreshToken() {
-        AuthService.LoginResult result = authService.login("admin-test@hotel.test", "admin123");
+        AuthService.LoginResult result = authService.login("admin-test@unit.invalid", "UnitTest#Password42");
         AuthResponse response = result.authResponse();
         assertNotNull(response.getToken());
         assertEquals("Bearer", response.getType());
@@ -59,7 +59,7 @@ class AuthServiceTest {
     @Test
     void loginUnknownUserThrowsUnauthorized() {
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> authService.login("nobody@hotel.test", "admin123"));
+                () -> authService.login("nobody@unit.invalid", "UnitTest#Password42"));
         assertEquals(401, ex.getStatus().value());
     }
 }

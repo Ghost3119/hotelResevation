@@ -229,6 +229,9 @@ export function UsersPage() {
             value={form.password ?? ''}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             error={fieldErrors.password}
+            minLength={14}
+            maxLength={72}
+            hint="14-72 caracteres: mayúscula, minúscula, número y símbolo."
             required={!editing}
           />
           <div className={FORM_ROW}>

@@ -128,7 +128,7 @@ export function ReservationFormPage() {
         }
       />
 
-      <form className={`${CARD} ${CARD_BODY}`} onSubmit={onSubmit} noValidate style={{ maxWidth: 820 }}>
+      <form className={`${CARD} ${CARD_BODY} max-w-[820px]`} onSubmit={onSubmit} noValidate>
         {submitError && (
           <div className={FORM_ALERT_ERROR} role="alert">{submitError}</div>
         )}

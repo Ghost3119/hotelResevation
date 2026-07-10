@@ -145,9 +145,10 @@ class AuthControllerTest {
     }
 
     @Test
-    void logoutWithoutAccessTokenIsUnauthorized() throws Exception {
+    void logoutWithoutAccessTokenStillClearsRefreshCookie() throws Exception {
         mockMvc.perform(post("/api/auth/logout"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isNoContent())
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("Max-Age=0")));
     }
 
     @Test

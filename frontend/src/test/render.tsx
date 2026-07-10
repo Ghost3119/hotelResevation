@@ -4,8 +4,8 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '../auth/AuthContext'
 import { ToastProvider } from '../components/Toast'
-import { adminUser, recepUser, setMeUser } from './handlers'
-import { STORAGE_TOKEN_KEY } from '../utils/constants'
+import { adminUser, recepUser, setAuthenticatedSession, setMeUser } from './handlers'
+import { setAccessToken } from '../auth/tokenStore'
 import type { ReactElement, ReactNode } from 'react'
 import type { UserDto, UserRole } from '../api/types'
 
@@ -27,10 +27,12 @@ export function render(ui: ReactElement, options: RenderOptions = {}) {
   const { route = '/', role = 'ADMIN', authenticated = false } = options
 
   if (authenticated) {
-    window.localStorage.setItem(STORAGE_TOKEN_KEY, 'test-token')
+    setAccessToken('test-token')
+    setAuthenticatedSession(true)
     setMeUser(ROLE_USERS[role] ?? adminUser)
   } else {
-    window.localStorage.removeItem(STORAGE_TOKEN_KEY)
+    setAccessToken(null)
+    setAuthenticatedSession(false)
     setMeUser(adminUser)
   }
 

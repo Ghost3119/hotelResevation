@@ -37,7 +37,7 @@ class SecurityTest {
     @BeforeEach
     void setup() {
         TestData.userWithPassword(userRepository, passwordEncoder,
-                "sec-admin@hotel.test", "admin123", UserRole.ADMIN);
+                "sec-admin@unit.invalid", "UnitTest#Password42", UserRole.ADMIN);
         TestData.userWithPassword(userRepository, passwordEncoder,
                 "sec-recep@hotel.test", "recep123", UserRole.RECEPCIONISTA);
     }
@@ -61,7 +61,7 @@ class SecurityTest {
 
     @Test
     void adminEndpointSucceedsForAdmin() throws Exception {
-        String token = login("sec-admin@hotel.test", "admin123");
+        String token = login("sec-admin@unit.invalid", "UnitTest#Password42");
         mockMvc.perform(get("/api/users").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
     }

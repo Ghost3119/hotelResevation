@@ -687,7 +687,8 @@ debe bloquear disponibilidad (RN-2, RN-4). Por tanto el modelo se complementa co
 Carga inicial para desarrollo. Resumen (estado final tras `V2` + `V4`, importes
 en **MXN**):
 
-- **2 usuarios** (admin + recepcionista), `password_hash = 'BCRYPT_PENDING'`.
+- **0 usuarios de acceso**. Las cuentas se crean opcionalmente desde secretos de
+  entorno después de Flyway.
 - **4 tipos** de habitación: Sencilla (1, **1200.00** MXN), Doble (2, **1800.00**
   MXN), Suite (4, **4500.00** MXN), Familiar (4, **2800.00** MXN).
   > En `V2` los precios eran tipo EUR (80/120/250/180); `V4` los actualiza a
@@ -699,7 +700,7 @@ en **MXN**):
 - **1 reserva** `CONFIRMED` (id=1): huésped 1, `check_in = CURRENT_DATE + 1`,
   `check_out = CURRENT_DATE + 3` (2 noches), tipo Doble,
   `nightly_price = 1800.00`, `total_amount = 3600.00` (2 noches × 1800.00),
-  `adults = 2`, `children = 0`, `created_by = 1`.
+  `adults = 2`, `children = 0`, `created_by = NULL`.
   Con su `reservation_rooms` asignando la habitación 201 (id=5).
 - **1 pago** `COMPLETED` de **1500.00** MXN en `CASH`
   (`reference = 'SEED-0001'`). Saldo restante = `3600.00 - 1500.00 = 2100.00`,
@@ -708,62 +709,21 @@ en **MXN**):
   `RESERVATION_CREATED` (id=2) lleva en `metadata` `nightlyPrice = "1800.00"` y
   `totalAmount = "3600.00"` (actualizado por `V4`).
 
-## 6. Credenciales semilla (solo desarrollo)
+## 6. Cuentas de desarrollo
 
-| Email                  | Contraseña     | Rol            |
-|------------------------|----------------|----------------|
-| `admin@hotel.test`     | `admin123`     | `ADMIN`        |
-| `recepcion@hotel.test` | `recepcion123` | `RECEPCIONISTA`|
-
-> `architecture.md` (sección 2) define los roles. Estas credenciales **no** se
-> envían como hashes en el SQL (ver contrato abajo).
+No existen credenciales semilla versionadas. Las cuentas se proporcionan desde
+el `.env` ignorado o un gestor de secretos y se crean solo cuando
+`BOOTSTRAP_USERS_ENABLED=true`. Después del primer arranque se debe volver a
+desactivar el bootstrap.
 
 ## 7. Contrato para el BACKEND agent (obligatorio)
 
-### 7.1 `DataInitializer` para `BCRYPT_PENDING`
+### 7.1 `DataInitializer` con secretos de entorno
 
-`V2__seed_data.sql` inserta los usuarios con `password_hash = 'BCRYPT_PENDING'`
-(centinela) en lugar de un hash BCrypt codificado en SQL plano, para **no
-enviar hashes inválidos** (un hash BCrypt válido debe generarse con
-`BCryptPasswordEncoder` en JVM; escribirlo a mano en SQL es frágil).
-
-El backend **debe** implementar un `DataInitializer`
-(`CommandLineRunner` / `ApplicationRunner` / bean con `@PostConstruct`) que se
-ejecute **después** de Flyway y haga:
-
-```java
-@Component
-@RequiredArgsConstructor
-class DataInitializer {
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder; // BCryptPasswordEncoder coste 10
-
-    private static final Map<String,String> SEED_CREDENTIALS = Map.of(
-        "admin@hotel.test",     "admin123",
-        "recepcion@hotel.test", "recepcion123"
-    );
-
-    @PostConstruct
-    void patchSeedPasswords() {
-        for (User u : userRepository.findAll()) {
-            if ("BCRYPT_PENDING".equals(u.getPasswordHash())) {
-                String plain = SEED_CREDENTIALS.get(u.getEmail());
-                if (plain != null) {
-                    u.setPasswordHash(passwordEncoder.encode(plain));
-                    userRepository.save(u);
-                }
-            }
-        }
-    }
-}
-```
-
-Equivalente SQL: `UPDATE users SET password_hash = :bcrypt
-WHERE password_hash = 'BCRYPT_PENDING';` (usando `BCryptPasswordEncoder.encode`).
-
-El `DataInitializer` debe ser **idempotente** (solo actualiza las filas con
-centinela) y seguro de ejecutar en cada arranque. Idealmente debe logs informativo
-de cuántas filas parchea.
+El `DataInitializer` es opt-in. Si está habilitado, exige email y contraseña
+para cada rol, valida la política de contraseña, genera BCrypt y crea únicamente
+cuentas ausentes. No modifica contraseñas existentes ni contiene literales de
+acceso. La V14 desactiva cuentas históricas y revoca sus sesiones.
 
 ### 7.2 JPA ↔ SQL: `updated_at`
 

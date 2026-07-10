@@ -91,33 +91,14 @@ psql -U hotel -d hotelmanager -h localhost -f database/seed.sql
 
 ## Contrato con el backend (importante)
 
-`V2__seed_data.sql` inserta los usuarios con `password_hash = 'BCRYPT_PENDING'`
-(centinela) para no enviar hashes BCrypt inválidos en SQL plano. El **backend**
-debe implementar un `DataInitializer`
-(`CommandLineRunner` / `ApplicationRunner` / `@PostConstruct`) que, **después**
-de que Flyway corra, haga:
+`V2__seed_data.sql` no inserta usuarios ni contraseñas. El bootstrap de cuentas
+es opcional, está desactivado por defecto y solo acepta valores suministrados
+por variables de entorno/secret manager. El backend genera el hash BCrypt antes
+de persistir y nunca registra la contraseña.
 
-```java
-// BCryptPasswordEncoder con coste 10
-for (User u : userRepository.findAll()) {
-    if ("BCRYPT_PENDING".equals(u.getPasswordHash())) {
-        u.setPasswordHash(encoder.encode(plaintextPorEmail(u.getEmail())));
-        userRepository.save(u);
-    }
-}
-```
-
-Equivalente SQL: `UPDATE users SET password_hash = :bcrypt
-WHERE password_hash = 'BCRYPT_PENDING';`
-
-Credenciales en texto plano (solo desarrollo):
-
-| Email                  | Contraseña     | Rol            |
-|------------------------|----------------|----------------|
-| `admin@hotel.test`     | `admin123`     | `ADMIN`        |
-| `recepcion@hotel.test` | `recepcion123` | `RECEPCIONISTA`|
-
-El `DataInitializer` del backend debe usar exactamente esos literales para que
-coincidan con `V2__seed_data.sql` y `docs/database.md`.
+La migración `V14__disable_legacy_seed_accounts.sql` revoca sesiones y desactiva
+las cuentas predecibles de instalaciones antiguas. Una base que ya aplicó la V2
+anterior debe recrearse en desarrollo o repararse de forma controlada antes de
+aplicar migraciones, porque el saneamiento cambia el checksum histórico.
 
 Más detalle en `docs/database.md`.

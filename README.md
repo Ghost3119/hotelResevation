@@ -100,23 +100,30 @@ hotel/
 
 ---
 
-## Credenciales de desarrollo
+## Acceso de desarrollo
 
-Solo para desarrollo y demostracion:
+El repositorio no contiene cuentas ni contrasenas funcionales. Flyway tampoco
+crea usuarios de acceso. Para un entorno local nuevo, define valores unicos en
+el archivo `.env` ignorado por Git y habilita el bootstrap una sola vez:
 
-| Rol | Email | Contrasena |
-| --- | --- | --- |
-| ADMIN | `admin@hotel.test` | `admin123` |
-| RECEPCIONISTA | `recepcion@hotel.test` | `recepcion123` |
+```env
+BOOTSTRAP_USERS_ENABLED=true
+BOOTSTRAP_ADMIN_EMAIL=
+BOOTSTRAP_ADMIN_PASSWORD=
+BOOTSTRAP_RECEPTIONIST_EMAIL=
+BOOTSTRAP_RECEPTIONIST_PASSWORD=
+```
 
-Las contrasenas semilla se insertan con `BCRYPT_PENDING` y el backend las cifra
-con BCrypt al arrancar.
+Las contrasenas deben tener entre 14 y 72 caracteres ASCII e incluir mayuscula,
+minuscula, numero y simbolo. El backend solo persiste hashes BCrypt. Desactiva
+`BOOTSTRAP_USERS_ENABLED` despues de crear/verificar las cuentas.
 
 ---
 
 ## Configuracion
 
-Copia `.env.example` a `.env` y ajusta secretos antes de exponer la app:
+Copia `.env.example` a `.env` y completa los secretos obligatorios antes de
+arrancar. No hay valores de respaldo para la base de datos ni para JWT:
 
 ```bash
 cp .env.example .env
@@ -124,14 +131,16 @@ cp .env.example .env
 
 Variables importantes:
 
-- `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`
+- `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
 - `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`,
   `SPRING_DATASOURCE_PASSWORD`
 - `JWT_SECRET`, `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS`, `JWT_ISSUER`
 - `REFRESH_TOKEN_EXPIRATION_SECONDS`, `REFRESH_TOKEN_SECURE`
 - `APP_SECURITY_EXPOSE_DOCS`, `APP_SECURITY_EXPOSE_H2_CONSOLE`
 - `AUTH_RATE_LIMIT_ENABLED`, `AUTH_RATE_LIMIT_MAX_ATTEMPTS`,
-  `AUTH_RATE_LIMIT_WINDOW_SECONDS`
+  `AUTH_RATE_LIMIT_WINDOW_SECONDS`, `AUTH_RATE_LIMIT_MAX_TRACKED_KEYS`
+- `TRUSTED_PROXY_CIDRS`
+- `BOOTSTRAP_USERS_ENABLED` y `BOOTSTRAP_*`
 - `CORS_ALLOWED_ORIGINS`, `CORS_ALLOWED_ORIGIN_PATTERNS`
 - `PRIVACY_RETENTION_DAYS`
 - `CHECKIN_EARLY_CHECKIN_ALLOWED`, `CHECKIN_EARLY_CHECKIN_HOURS`
@@ -139,11 +148,12 @@ Variables importantes:
 - `APP_TIMEZONE`
 - `VITE_API_BASE_URL`
 
-Para ngrok, el frontend debe llamar a la API por ruta relativa:
+Para ngrok, el frontend debe llamar a la API por ruta relativa. No habilites un
+comodin para todos los subdominios de ngrok:
 
 ```env
 VITE_API_BASE_URL=/api
-CORS_ALLOWED_ORIGIN_PATTERNS=https://*.ngrok-free.dev
+CORS_ALLOWED_ORIGIN_PATTERNS=
 ```
 
 Si se expone por HTTPS con ngrok y no solo en desarrollo local:
@@ -152,6 +162,17 @@ Si se expone por HTTPS con ngrok y no solo en desarrollo local:
 REFRESH_TOKEN_SECURE=true
 APP_SECURITY_EXPOSE_DOCS=false
 ```
+
+Si realmente hay un cliente separado que necesita CORS, agrega solamente su
+origen exacto a `CORS_ALLOWED_ORIGINS`.
+
+> Una base existente puede conservar las antiguas credenciales aunque se quite
+> el texto del repositorio. La migracion V14 revoca sesiones y desactiva las
+> cuentas semilla historicas. Como V2 se saneo, una instalacion que ya la aplico
+> debe recrear su base de desarrollo o ejecutar `flyway repair` de forma
+> controlada antes de migrar. Cambiar `POSTGRES_PASSWORD` tampoco cambia el rol
+> dentro de un volumen ya inicializado; rota ese rol con `ALTER ROLE` o recrea el
+> volumen solo si es aceptable perder sus datos.
 
 ---
 
@@ -165,9 +186,9 @@ docker compose up --build
 
 - Frontend: http://localhost:5173
 - API por proxy nginx: http://localhost:5173/api
-- Backend directo: http://localhost:8080/api
-- Swagger UI: http://localhost:8080/api/docs
-- OpenAPI JSON: http://localhost:8080/api/openapi.json
+
+PostgreSQL y el backend no publican puertos al host en el Compose endurecido.
+Swagger/OpenAPI esta desactivado por defecto.
 
 ### Exponer para la materia con ngrok
 
@@ -260,10 +281,8 @@ Scripts disponibles:
 
 Notas:
 
-- `npm audit --omit=dev` no reporta vulnerabilidades de produccion.
-- El audit completo puede reportar vulnerabilidades en dependencias de
-  desarrollo como Vite/Vitest/esbuild. No quedan expuestas cuando se sirve el
-  build estatico con nginx.
+- `npm audit` y `npm audit --omit=dev` no reportan vulnerabilidades tras la
+  actualizacion a Vite 8/Vitest 4 y del arbol OpenAPI.
 - Snyk requiere CLI autenticado (`snyk auth`).
 - OWASP ZAP debe ejecutarse contra la URL actual de ngrok.
 - El reporte base esta en `docs/blue-team-report.md`.
@@ -272,7 +291,7 @@ Controles implementados:
 
 - CSP y cabeceras: `X-Frame-Options`, `X-Content-Type-Options`,
   `Referrer-Policy`, `Permissions-Policy`, COOP/CORP y HSTS.
-- CORS con origenes exactos y patrones para `*.ngrok-free.dev`.
+- CORS con origenes exactos; no se habilitan comodines multiusuario de ngrok.
 - API frontend por `/api` para evitar exponer `localhost:8080` en el navegador.
 - Cookie refresh `HttpOnly`, `SameSite=Lax`, `Path=/api/auth` y `Secure`
   configurable.
@@ -302,8 +321,8 @@ Controles implementados:
   backend valida en transaccion con bloqueo pesimista.
 - **Dinero**: `BigDecimal` en Java y `NUMERIC(12,2)` en PostgreSQL. Moneda:
   MXN.
-- **Tokens**: access token corto + refresh token rotativo en cookie HttpOnly.
-  Solo se almacena hash SHA-256 del refresh token.
+- **Tokens**: access token corto solo en memoria + refresh token rotativo en
+  cookie HttpOnly. Solo se almacena hash SHA-256 del refresh token.
 - **Privacidad**: respuestas normales usan datos enmascarados; exportar o ver
   datos completos requiere permiso y genera auditoria.
 - **OpenAPI**: el frontend genera cliente/tipos desde el contrato.
@@ -323,15 +342,14 @@ Controles implementados:
   cualquier exposicion real.
 - Snyk y ZAP deben ejecutarse en el entorno de quien presenta para generar
   evidencia actual.
-- El access token sigue viviendo en `localStorage`; para produccion seria mejor
-  mover toda la sesion a cookies HttpOnly o aplicar defensas adicionales contra
-  XSS.
+- El access token se mantiene solo en memoria; una recarga restaura la sesion
+  mediante la cookie HttpOnly de refresh.
 
 ---
 
 ## Estado verificado
 
-- Docker Compose levanta PostgreSQL, Flyway V1-V13, backend y frontend.
+- Docker Compose levanta PostgreSQL, Flyway V1-V14, backend y frontend.
 - Login por `http://localhost:5173/api/auth/login` funciona.
 - Login desde origen ngrok funciona con `CORS_ALLOWED_ORIGIN_PATTERNS`.
 - El build del frontend no contiene `localhost:8080`.

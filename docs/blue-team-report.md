@@ -89,7 +89,7 @@ Document each finding:
 | Tool | Severity | Finding | Evidence | Mitigation |
 | --- | --- | --- | --- | --- |
 | Snyk | TBD | TBD | `security/reports/snyk.json` | TBD |
-| npm audit | 5 moderate, 1 high, 1 critical | Dependency vulnerabilities in frontend dependency tree | `security/reports/npm-audit.json` | Review affected packages and apply non-breaking upgrades first; avoid `npm audit fix --force` until regression tests are run. |
+| npm audit | 0 | Vite, Vitest and the OpenAPI dependency tree were upgraded | `security/reports/npm-audit.json` | Keep the lockfile and rerun the audit in CI. |
 
 ## 5. DAST with OWASP ZAP
 
@@ -117,8 +117,10 @@ Attach:
 
 Before publishing with ngrok:
 
-- Change `POSTGRES_PASSWORD`.
-- Change `JWT_SECRET`.
+- Confirm `POSTGRES_PASSWORD` and `JWT_SECRET` are unique required secrets; the
+  stack must refuse to start when either is missing.
+- Confirm bootstrap credentials exist only in the ignored `.env`/secret manager
+  and disable `BOOTSTRAP_USERS_ENABLED` after first use.
 - Set `REFRESH_TOKEN_SECURE=true` when using HTTPS/ngrok.
 - Set `APP_SECURITY_EXPOSE_DOCS=false`.
 - Confirm frontend uses `/api`, not `localhost:8080`.
@@ -127,6 +129,9 @@ Before publishing with ngrok:
 
 ## 7. Known Residual Risks
 
-- Access token is currently stored in `localStorage`; this is acceptable for the demo but would be weaker than a backend-for-frontend or HttpOnly access-cookie design.
-- The CSP allows `style-src 'unsafe-inline'` because the current UI stack may emit inline styles; this should be tightened further in a production hardening pass.
-- The Docker Compose file is for classroom/demo use, not production.
+- The access token now lives only in memory; reload restoration uses the
+  HttpOnly refresh cookie.
+- CSP no longer allows inline scripts or inline styles.
+- Compose now keeps PostgreSQL/backend internal and binds only the frontend to
+  loopback, but it still is not a substitute for production TLS termination,
+  managed secrets, backups, monitoring and a least-privilege database role.

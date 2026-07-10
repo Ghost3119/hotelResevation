@@ -44,8 +44,6 @@ export const ROUTES = {
   FORBIDDEN: '/403',
 } as const
 
-export const STORAGE_TOKEN_KEY = 'hotel.token'
-
 export const ROOM_STATUS_LABELS: Record<RoomStatus, string> = {
   AVAILABLE: 'Disponible',
   RESERVED: 'Reservada',
