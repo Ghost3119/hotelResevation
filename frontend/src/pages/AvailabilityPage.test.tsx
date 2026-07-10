@@ -32,6 +32,7 @@ describe('AvailabilityPage', () => {
 
     // Espera a que el dropdown se llene desde el PageDto de /room-types.
     const select = await screen.findByLabelText('Tipo de habitación')
+    await within(select).findByRole('option', { name: 'Doble' })
     const options = within(select).getAllByRole('option')
     const labels = options.map((o) => o.textContent ?? '')
     expect(labels).toContain('Todos')

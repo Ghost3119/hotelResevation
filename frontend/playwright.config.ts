@@ -5,10 +5,10 @@ import { defineConfig, devices } from '@playwright/test'
  * Configuración de Playwright para pruebas E2E del Hotel Manager.
  *
  * REQUISITOS PREVIOS:
- * - El backend debe estar corriendo en http://localhost:8080 (levántelo con
- *   `docker compose up -d postgres backend` desde la raíz del proyecto, o
- *   manualmente con Maven + Postgres). Las pruebas E2E hacen llamadas reales
- *   al API (sin MSW) y necesitan backend + Postgres.
+ * - Levanta el stack con `docker compose up --build` desde la raíz. Las pruebas
+ *   llaman al backend por el proxy same-origin `http://localhost:5173/api`; los
+ *   puertos internos de backend/Postgres no se publican.
+ * - Define ADMIN_EMAIL y ADMIN_PASSWORD con las credenciales bootstrap locales.
  * - El frontend se levanta automáticamente mediante `webServer` (npm run dev)
  *   en http://localhost:5173, salvo que ya esté corriendo (reuseExistingServer
  *   fuera de CI).

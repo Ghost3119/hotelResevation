@@ -61,7 +61,7 @@ hotel/
 |   |   `-- web/                   # Controladores, DTOs, mappers, errores
 |   |-- src/main/resources/
 |   |   |-- application.yml
-|   |   `-- db/migration/          # Flyway V1-V13
+|   |   `-- db/migration/          # Flyway V1-V14
 |   `-- src/test/                  # Unitarias, integracion y Testcontainers
 |-- frontend/                      # React 18, TypeScript, Vite, Tailwind
 |   |-- src/api/generated/         # Cliente/tipos generados desde OpenAPI
@@ -86,7 +86,7 @@ hotel/
 
 | Capa | Tecnologia |
 | --- | --- |
-| Backend | Java 21, Spring Boot 3.3, Maven |
+| Backend | Java 21, Spring Boot 3.5, Maven |
 | Persistencia | PostgreSQL 16, Flyway, Spring Data JPA, Testcontainers |
 | Seguridad | Spring Security, JWT HS256, refresh token rotativo, BCrypt, rate limit |
 | Documentacion API | OpenAPI 3 / Swagger UI |
@@ -116,7 +116,8 @@ BOOTSTRAP_RECEPTIONIST_PASSWORD=
 
 Las contrasenas deben tener entre 14 y 72 caracteres ASCII e incluir mayuscula,
 minuscula, numero y simbolo. El backend solo persiste hashes BCrypt. Desactiva
-`BOOTSTRAP_USERS_ENABLED` despues de crear/verificar las cuentas.
+`BOOTSTRAP_USERS_ENABLED` y vacia los valores `BOOTSTRAP_*_PASSWORD` despues de
+crear/verificar las cuentas.
 
 ---
 

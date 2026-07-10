@@ -381,14 +381,17 @@ storage or indexing.
 
 ## 9. Secret management abstraction
 
-No secrets are versioned in Git. All secrets are injected via environment
-variables, with `.env.example` documenting the names and placeholder values.
+The current tree contains no functional secrets. Historical commits did expose
+retired development credentials, so those values must be treated as
+compromised until every external copy is rotated and the public history is
+rewritten in coordination with all repository users. Current secrets are
+injected through environment variables; `.env.example` documents names only.
 
 ### Secrets inventory
 
 | Env var                          | Used by               | Dev default (placeholder)        | Production source            |
 |----------------------------------|-----------------------|----------------------------------|------------------------------|
-| `JWT_SECRET`                     | `app.jwt.secret`      | `change-this-...`                | Secrets manager              |
+| `JWT_SECRET`                     | `app.jwt.secret`      | Required env secret              | Secrets manager              |
 | `SPRING_DATASOURCE_PASSWORD`     | DB connection         | Required env secret              | Secrets manager              |
 | `POSTGRES_PASSWORD`              | DB container          | Required env secret              | Secrets manager              |
 | `REFRESH_TOKEN_SECURE`           | Cookie flag           | `false`                          | `true` (env / secrets mgr)   |
@@ -399,9 +402,9 @@ variables, with `.env.example` documenting the names and placeholder values.
 
 1. **Local development:** `.env` file (gitignored) sourced by the developer or
    the compose stack. `.env.example` is the contract of variable names.
-2. **Application binding:** `application.yml` references env vars with
-   `${VAR:default}` so the app runs with sensible dev defaults but picks up
-   injected values in other environments.
+2. **Application binding:** `application.yml` references env vars. Passwords
+   and JWT signing material have no working fallback, so startup fails until
+   the environment provides them.
 3. **Production:** a secrets manager (**HashiCorp Vault**, AWS Secrets
    Manager, GCP Secret Manager, or equivalent) injects secrets at runtime. The
    application does **not** bind to a specific provider — the abstraction is

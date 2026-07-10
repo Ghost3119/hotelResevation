@@ -120,7 +120,8 @@ Before publishing with ngrok:
 - Confirm `POSTGRES_PASSWORD` and `JWT_SECRET` are unique required secrets; the
   stack must refuse to start when either is missing.
 - Confirm bootstrap credentials exist only in the ignored `.env`/secret manager
-  and disable `BOOTSTRAP_USERS_ENABLED` after first use.
+  during first use; then disable `BOOTSTRAP_USERS_ENABLED` and clear the
+  bootstrap password variables.
 - Set `REFRESH_TOKEN_SECURE=true` when using HTTPS/ngrok.
 - Set `APP_SECURITY_EXPOSE_DOCS=false`.
 - Confirm frontend uses `/api`, not `localhost:8080`.
@@ -135,3 +136,16 @@ Before publishing with ngrok:
 - Compose now keeps PostgreSQL/backend internal and binds only the frontend to
   loopback, but it still is not a substitute for production TLS termination,
   managed secrets, backups, monitoring and a least-privilege database role.
+- The current tree contains no functional credentials, but historical commits
+  still contain the retired development credentials. Treat them as
+  compromised, rotate every external copy, and coordinate a history rewrite
+  before considering them removed from the public repository.
+- The documented role matrix and some controller annotations are not fully
+  aligned for guest writes, housekeeping assignment/read access and room-block
+  reads. Confirm the intended business permissions, then lock them down with
+  authorization integration tests before production.
+- Full guest identifiers remain plaintext in PostgreSQL. API masking limits
+  ordinary disclosure but does not protect a database dump; field-level
+  encryption and encrypted backups remain production work.
+- Snyk and OWASP ZAP reports are still separate execution gates. The npm audit
+  is clean, but it does not replace SAST or authenticated DAST.

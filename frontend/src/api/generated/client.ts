@@ -97,8 +97,8 @@ export const guestsClient = {
   create: (data: GuestWriteDto) => unwrap<GuestDto>(api.post('/guests', data)),
   update: (id: number, data: GuestWriteDto) => unwrap<GuestDto>(api.put(`/guests/${id}`, data)),
   reservations: (id: number) => unwrap<ReservationDto[]>(api.get(`/guests/${id}/reservations`)),
-  getFull: (id: number, justification?: string) =>
-    unwrap<GuestFullDto>(api.get(`/guests/${id}/full`, { params: justification ? { justification } : undefined })),
+  getFull: (id: number, justification: string) =>
+    unwrap<GuestFullDto>(api.get(`/guests/${id}/full`, { params: { justification } })),
 }
 
 export const roomTypesClient = {
