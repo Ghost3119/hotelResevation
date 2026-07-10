@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -70,5 +71,24 @@ class SecurityTest {
     void authenticatedEndpointWithoutTokenReturns401() throws Exception {
         mockMvc.perform(get("/api/users"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void corsAllowsBothLocalFrontendOriginsAndRejectsUnknownOrigins() throws Exception {
+        for (String origin : new String[]{"http://localhost:5173", "http://127.0.0.1:5173"}) {
+            mockMvc.perform(options("/api/auth/login")
+                            .header("Origin", origin)
+                            .header("Access-Control-Request-Method", "POST")
+                            .header("Access-Control-Request-Headers", "content-type"))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Access-Control-Allow-Origin", origin))
+                    .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+        }
+
+        mockMvc.perform(options("/api/auth/login")
+                        .header("Origin", "https://attacker.invalid")
+                        .header("Access-Control-Request-Method", "POST"))
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
     }
 }
